@@ -27,9 +27,11 @@ None.
 backend/
   app/
     schemas/
-      ~ todo.py              # Was "# TODO" comment → full schemas
+      + pagination.py        # New: Generic PaginatedResponse[T] base
+      ~ todo.py              # Was "# TODO" comment → full schemas (uses PaginatedResponse)
     repositories/
-      ~ todo_repository.py   # Was empty class → full CRUD methods
+      + base.py              # New: BaseRepository with _paginate helper
+      ~ todo_repository.py   # Was empty class → extends BaseRepository with CRUD methods
     services/
       ~ todo_service.py      # Was empty class → business logic
     dependencies/
@@ -56,9 +58,34 @@ backend/
 
 ## Implementation
 
-### Step 1: Create `app/schemas/todo.py`
+### Step 1a: Create `app/schemas/pagination.py`
 
-This defines all request/response shapes. Built on top of `TodoBase` from the model.
+A generic, reusable paginated response base. Any future paginated endpoint (users, comments, etc.) can reuse this.
+
+```python
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel
+
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Generic paginated response wrapper. Reusable for any entity."""
+
+    items: list[T]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+```
+
+**Why `BaseModel` instead of `SQLModel`?** This is a pure response schema with no DB involvement. Using `BaseModel` makes the intent clear — it's a generic data wrapper, not tied to SQLModel's table logic.
+
+### Step 1b: Create `app/schemas/todo.py`
+
+This defines all request/response shapes. Uses `PaginatedResponse[T]` for the list endpoint.
 
 ```python
 import uuid
@@ -67,6 +94,7 @@ from datetime import datetime
 from sqlmodel import SQLModel, Field
 
 from app.models.todo import Priority, TodoStatus
+from app.schemas.pagination import PaginatedResponse
 
 
 class TodoCreate(SQLModel):
@@ -116,14 +144,8 @@ class TodoReadList(SQLModel):
     updated_at: datetime
 
 
-class TodoPaginatedResponse(SQLModel):
-    """Paginated response wrapper."""
-
-    items: list[TodoReadList]
-    total: int
-    page: int
-    page_size: int
-    total_pages: int
+# Type alias — reusable pattern: PaginatedResponse[YourSchema]
+TodoPaginatedResponse = PaginatedResponse[TodoReadList]
 ```
 
 **Explanation:**
@@ -131,29 +153,62 @@ class TodoPaginatedResponse(SQLModel):
 - `TodoUpdate` — all `Optional` for PATCH partial updates.
 - `TodoRead` — full detail for single-todo owner access.
 - `TodoReadList` — `description: str | None` so the service can null it for non-owners.
-- `TodoPaginatedResponse` — wraps list results with pagination metadata.
+- `TodoPaginatedResponse` — just a type alias for `PaginatedResponse[TodoReadList]`. Future entities follow the same pattern: `UserPaginatedResponse = PaginatedResponse[UserRead]`.
 
 **Trade-off:** Separate `TodoRead` vs `TodoReadList` instead of one schema with optional description. This makes the API contract explicit — the list endpoint always returns `TodoReadList`, the detail endpoint always returns `TodoRead`. Clearer for the frontend.
 
-### Step 2: Create `app/repositories/todo_repository.py`
+### Step 2a: Create `app/repositories/base.py`
 
-Handles all database queries. Follows the same pattern as `UserRepository`.
+A base repository with shared helpers. Any repository that needs pagination inherits from this instead of rolling its own.
+
+```python
+from typing import Any
+
+from sqlalchemy import func, Select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+
+class BaseRepository:
+    """Base repository with shared database helpers."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def _paginate(
+        self, statement: Select[Any], page: int, page_size: int
+    ) -> tuple[list[Any], int]:
+        """Reusable pagination for any query.
+
+        Returns a tuple of (items, total_count).
+        """
+        count_stmt = select(func.count()).select_from(statement.subquery())
+        total = (await self.session.execute(count_stmt)).scalar_one()
+
+        offset = (page - 1) * page_size
+        statement = statement.offset(offset).limit(page_size)
+        results = await self.session.execute(statement)
+
+        return list(results.scalars().all()), total
+```
+
+**Why a base class?** `_paginate` is not specific to todos. Any repository with a paginated list (users, comments, etc.) needs the same count + offset + limit logic. Putting it in `BaseRepository` means every child gets it for free — just call `self._paginate(statement, page, page_size)`.
+
+### Step 2b: Create `app/repositories/todo_repository.py`
+
+Extends `BaseRepository`. Only contains todo-specific queries — pagination boilerplate is inherited.
 
 ```python
 import uuid
 
-from sqlalchemy import func
 from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.todo import Priority, Todo, TodoStatus
+from app.repositories.base import BaseRepository
 
 
-class TodoRepository:
+class TodoRepository(BaseRepository):
     """Repository for Todo database operations."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
 
     async def create(self, todo: Todo) -> Todo:
         """Create a new todo in the database."""
@@ -174,36 +229,20 @@ class TodoRepository:
         completed: bool | None = None,
         search: str | None = None,
     ) -> tuple[list[Todo], int]:
-        """Get all todos with pagination, filtering, and search.
+        """Get all todos with pagination, filtering, and search."""
+        statement = select(Todo).order_by(Todo.created_at.desc())
 
-        Returns a tuple of (todos, total_count).
-        """
-        statement = select(Todo)
-
-        # Apply filters
         if priority is not None:
             statement = statement.where(Todo.priority == priority)
         if completed is not None:
-            if completed:
-                statement = statement.where(Todo.status == TodoStatus.COMPLETED)
-            else:
-                statement = statement.where(Todo.status != TodoStatus.COMPLETED)
-        if search is not None:
+            status = TodoStatus.COMPLETED
+            statement = statement.where(
+                Todo.status == status if completed else Todo.status != status
+            )
+        if search:
             statement = statement.where(Todo.title.ilike(f"%{search}%"))
 
-        # Count total before pagination
-        count_statement = select(func.count()).select_from(statement.subquery())
-        count_result = await self.session.exec(count_statement)
-        total = count_result.one()
-
-        # Apply pagination
-        offset = (page - 1) * page_size
-        statement = statement.offset(offset).limit(page_size).order_by(Todo.created_at.desc())
-
-        result = await self.session.exec(statement)
-        todos = list(result.all())
-
-        return todos, total
+        return await self._paginate(statement, page, page_size)
 
     async def update(self, todo: Todo) -> Todo:
         """Update an existing todo."""
@@ -219,13 +258,11 @@ class TodoRepository:
 ```
 
 **Explanation:**
-- `get_all` returns `tuple[list[Todo], int]` — the items and total count. The service needs both to build the paginated response.
-- Filters are chained with `.where()` — each filter is independently optional.
-- `completed` param is a boolean that maps to `TodoStatus.COMPLETED` vs everything else (as decided in brainstorm).
-- `search` uses `ilike` for case-insensitive partial match (as decided in brainstorm).
-- `order_by(Todo.created_at.desc())` — newest first, sensible default.
-
-**Trade-off:** Counting via subquery (`select(func.count()).select_from(...)`) adds one extra query but gives accurate total even with filters applied. Using `.count()` on the ORM result would require loading all rows into memory.
+- `TodoRepository` extends `BaseRepository` — no `__init__` needed (inherited), no `_paginate` needed (inherited).
+- `get_all` is clean: build query → apply filters → `return await self._paginate(...)`.
+- `order_by` is applied before filters so the final result is always sorted.
+- `completed` filter is condensed into a single ternary expression.
+- Future: `UserRepository` can also extend `BaseRepository` to get pagination for free.
 
 ### Step 3: Create `app/services/todo_service.py`
 
@@ -536,6 +573,6 @@ uv run uvicorn app.main:app --reload
 ### Step 7: Commit
 
 ```bash
-git add app/schemas/todo.py app/repositories/todo_repository.py app/services/todo_service.py app/dependencies/todo.py app/routers/todos.py
+git add app/schemas/pagination.py app/schemas/todo.py app/repositories/base.py app/repositories/todo_repository.py app/services/todo_service.py app/dependencies/todo.py app/routers/todos.py
 git commit -m "feat: implement Todo CRUD endpoints with pagination, filtering, and search"
 ```

@@ -17,6 +17,11 @@ Then answer the rephrased question.
 | why this error when I run server? | I'm getting an error when I start the dev server. What's causing it and how do I fix it? |
 | how to make frontend talk to backend? | How do I connect the Next.js frontend to the FastAPI backend API? |
 
+## Developer Preferences
+
+- **Prefer scalable, clean, best-practice design patterns.** Reusable abstractions, generics, and proper separation of concerns are motivating — not over-engineering. When a pattern can be made generic for future reuse (e.g., pagination, error responses), do it.
+- Don't hold back on good architecture to "keep it simple." The developer finds clean design energizing, not pressuring.
+
 ## Vibecoding Approach
 
 This project follows a structured vibecoding workflow:
