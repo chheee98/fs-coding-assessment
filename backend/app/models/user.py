@@ -2,11 +2,14 @@ import uuid
 from enum import Enum
 
 from pydantic import EmailStr
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
 
 
 from app.schemas.mixin import TimeStampMixin
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.todo import Todo
 
 class UserStatus(str, Enum):
     ACTIVE = "ACTIVE"
@@ -27,3 +30,4 @@ class User(UserBase, TimeStampMixin, table=True):
         default_factory=uuid.uuid4, primary_key=True, index=True, nullable=False
     )
     hashed_password: str = Field(max_length=255, nullable=False)
+    todos: list["Todo"] = Relationship(back_populates="user")

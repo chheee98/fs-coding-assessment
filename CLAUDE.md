@@ -1,5 +1,22 @@
 # CLAUDE.md
 
+## Question Rewriting
+
+When I ask a question in rough or unclear phrasing, **rewrite my question first** before answering. Show the rewritten version so I can see how you understood it. This helps me learn to write better prompts.
+
+Format:
+> **Your question, rephrased:** [clearer version of what I asked]
+
+Then answer the rephrased question.
+
+### Examples
+| What I typed | Rephrased |
+|---|---|
+| the main question is here backend/app, so manny folder, what kind of code should I place into what result? | In a `backend/app` with many folders, what kind of code should go where? |
+| this test not work how to fix? | This test is failing — how do I debug and fix it? |
+| why this error when I run server? | I'm getting an error when I start the dev server. What's causing it and how do I fix it? |
+| how to make frontend talk to backend? | How do I connect the Next.js frontend to the FastAPI backend API? |
+
 ## Vibecoding Approach
 
 This project follows a structured vibecoding workflow:
