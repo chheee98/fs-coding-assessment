@@ -2,11 +2,11 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Write `test_create_todo_success` and `test_get_all_todos` in `tests/test_todos.py` with a proper async test setup using Docker Compose PostgreSQL.
+**Goal:** Write `test_create_todo_success` and `test_get_all_todos` in `tests/test_todos.py` with a proper async test setup using a separate test PostgreSQL database.
 
-**Architecture:** Set up async test fixtures in `conftest.py` (test database, async client, auth helpers). Write the two required tests. The test database is a separate database (`todo_db_test`) in the same Docker Compose PostgreSQL container.
+**Architecture:** Set up async test fixtures in `conftest.py` (test database via `.env.test`, async client, auth helpers). Write the two required tests. The test database connection is completely decoupled from the main app — configured independently in `.env.test`.
 
-**Tech Stack:** pytest, pytest-asyncio, httpx (AsyncClient), SQLModel, PostgreSQL, Docker Compose
+**Tech Stack:** pytest, pytest-asyncio, httpx (AsyncClient), SQLModel, PostgreSQL
 
 ---
 
@@ -18,18 +18,15 @@ The assessment requires exactly two named tests: `test_create_todo_success` and 
 
 ## New Libraries
 
-**`aiosqlite`** — No. We use the real PostgreSQL test database (Docker Compose) as decided in brainstorm.
-
-None needed — `httpx` and `pytest-asyncio` are already in dev dependencies.
+None needed — `httpx`, `pytest-asyncio`, and `python-dotenv` (via `pydantic-settings`) are already in dependencies.
 
 ## Project Structure (Before → After)
 
 ```
 backend/
-  ~ compose.yaml          # Add init script for test DB creation
-  + db-init/
-    + init-test-db.sh     # Script to create todo_db_test
-  ~ tests/conftest.py     # Full async test setup
+  + .env.test             # Test-specific env (TEST_DATABASE_URL) — decoupled from main .env
+  + .env.test.example     # Committed example for documentation
+  ~ tests/conftest.py     # Full async test setup, reads from .env.test
   ~ tests/test_todos.py   # Two required test cases
 ```
 
@@ -38,7 +35,7 @@ backend/
 - [ ] `uv run pytest tests/test_todos.py -v` passes
 - [ ] `test_create_todo_success` — creates todo with auth, asserts 201 + correct fields
 - [ ] `test_get_all_todos` — two users create todos, asserts description hidden for non-owner, asserts `user_id` present
-- [ ] Tests use real PostgreSQL (`todo_db_test`) via Docker Compose
+- [ ] Tests use real PostgreSQL (`todo_db_test`) configured independently via `.env.test`
 - [ ] Tests clean up after themselves (tables created/dropped per session)
 - [ ] Tests don't depend on each other (isolated)
 
@@ -46,61 +43,39 @@ backend/
 
 ## Implementation
 
-### Step 1: Create `backend/db-init/init-test-db.sh`
+### Step 1: Create `backend/.env.test`
 
-This init script runs when the PostgreSQL container starts for the first time. It creates the test database alongside the main one.
+Separate test environment config — completely decoupled from the main `.env`. Developers can point tests at any database without risk of hitting production.
 
-```bash
-#!/bin/bash
-set -e
+```env
+# Test Database Configuration — independent from main .env
+TEST_DATABASE_URL=postgresql+asyncpg://admin:admin@localhost:5432/todo_db_test
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
-    CREATE DATABASE todo_db_test;
-EOSQL
+# Reuse app settings needed for tests
+SECRET_KEY=test-secret-key-for-testing-only-not-production
+ALGORITHM=HS256
 ```
 
-### Step 2: Update `backend/compose.yaml`
+**Why a separate file?** The test DB connection should never be derived from or coupled to the main `DATABASE_URL`. A developer might run the main app against a staging DB — tests must still point at their own isolated database. This prevents accidental writes to production data.
 
-Mount the init script so PostgreSQL creates both databases on startup.
+**Add to `.gitignore`:** `.env.test` should be gitignored (like `.env`). Add a `.env.test.example` for documentation.
 
-```yaml
-services:
-  db:
-    image: postgres:16-alpine
-    container_name: todo-db
-    environment:
-      POSTGRES_DB: todo_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 5up3r53cr3t
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./db-init:/docker-entrypoint-initdb.d
-```
+### Step 2: Rewrite `backend/tests/conftest.py`
 
-**Explanation:** PostgreSQL automatically runs scripts in `/docker-entrypoint-initdb.d/` on first start. This creates `todo_db_test` alongside `todo_db`.
-
-**Important:** If your container already exists, you need to remove its volume for the init script to run:
-
-```bash
-docker compose down -v
-docker compose up -d
-```
-
-### Step 3: Rewrite `backend/tests/conftest.py`
-
-Full async test setup with real PostgreSQL.
+Full async test setup with real PostgreSQL. Reads test DB config from `.env.test` — completely independent from the main app's `.env`.
 
 ```python
 """Pytest configuration and shared fixtures for async API testing."""
 
 import asyncio
+import os
 import sys
 import uuid
 from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
+from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -110,11 +85,18 @@ from sqlalchemy.ext.asyncio import create_async_engine
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.main import app
-from app.db.session import get_async_session
+# Load test-specific env — NOT the main .env
+load_dotenv(project_root / ".env.test")
 
-# Test database URL — same Postgres container, different database
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:5up3r53cr3t@localhost:5432/todo_db_test"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+if not TEST_DATABASE_URL:
+    raise ValueError(
+        "TEST_DATABASE_URL must be set in .env.test. "
+        "Copy .env.test.example to .env.test and configure your test database."
+    )
+
+from app.main import app
+from app.db.session import get_async_session, verify_connection
 
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
@@ -129,7 +111,8 @@ def event_loop():
 
 @pytest.fixture(scope="session", autouse=True)
 async def setup_database():
-    """Create all tables at the start, drop at the end."""
+    """Verify test DB connection, create all tables, drop at the end."""
+    await verify_connection(target_engine=test_engine, db_url=TEST_DATABASE_URL)
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
     yield
@@ -194,15 +177,18 @@ async def second_auth_headers(client: AsyncClient) -> dict[str, str]:
 ```
 
 **Explanation:**
-- `test_engine` points to `todo_db_test` — real PostgreSQL, separate from dev data.
-- `setup_database` — session-scoped, creates tables once, drops them at the end.
+- `.env.test` is loaded explicitly — the test DB connection is **never** derived from the main `DATABASE_URL`. Developers configure it independently.
+- `TEST_DATABASE_URL` fails fast with a clear error if not set — no silent fallback to production.
+- `setup_database` — session-scoped, creates tables once, drops them at the end via `drop_all` (automatically handles all tables, no manual list to maintain).
 - `get_test_session` — overrides FastAPI's `get_async_session` dependency so the app uses the test DB.
 - `client` — `httpx.AsyncClient` with `ASGITransport` (standard way to test async FastAPI apps).
 - `auth_headers` / `second_auth_headers` — register unique users per test (UUID in username avoids collisions). Returns headers dict ready for use.
 
 **Trade-off:** Session-scoped table creation means test data accumulates across tests. This is fine for our 2 tests. If the test suite grew, you'd want per-test transactions with rollback. For this assessment, simplicity wins.
 
-### Step 4: Write `backend/tests/test_todos.py`
+**Note:** Requires `python-dotenv` — check if it's already installed (it is if `pydantic-settings` is a dependency, which uses it internally). If not, add it: `uv add --dev python-dotenv`.
+
+### Step 3: Write `backend/tests/test_todos.py`
 
 The two required tests.
 
@@ -338,15 +324,17 @@ class TestTodos:
 
 **Note on `user1_todo_id`:** We capture `user_id` from the create response (not `id`) to identify which items belong to User 1 when filtering the list.
 
-### Step 5: Run the tests
+### Step 4: Run the tests
+
+**Prerequisite:** Create the test database once (however your PostgreSQL is set up):
+
+```sql
+CREATE DATABASE todo_db_test;
+```
+
+Then run:
 
 ```bash
-# Make sure Docker Compose is running with test DB
-docker compose down -v && docker compose up -d
-
-# Wait a few seconds for PostgreSQL to initialize
-
-# Run the tests
 uv run pytest tests/test_todos.py -v
 ```
 
@@ -357,7 +345,7 @@ tests/test_todos.py::TestTodos::test_create_todo_success PASSED
 tests/test_todos.py::TestTodos::test_get_all_todos PASSED
 ```
 
-### Step 6: Run full test suite with coverage
+### Step 5: Run full test suite with coverage
 
 ```bash
 uv run pytest tests/ -v --cov=app --cov-report=term-missing
@@ -365,9 +353,11 @@ uv run pytest tests/ -v --cov=app --cov-report=term-missing
 
 **Expected:** All tests pass (including existing `test_main.py` tests). Coverage >= 70% for todo endpoints.
 
-### Step 7: Commit
+### Step 6: Commit
 
 ```bash
-git add db-init/ compose.yaml tests/conftest.py tests/test_todos.py
-git commit -m "test: add todo CRUD tests with Docker Compose PostgreSQL test database"
+git add .env.test.example tests/conftest.py tests/test_todos.py
+git commit -m "test: add todo CRUD tests with isolated test database via .env.test"
 ```
+
+**Reminder:** Commit `.env.test.example` (not `.env.test`) — the example file documents the required variables without exposing credentials.

@@ -1,7 +1,7 @@
 import uuid
 import math
 
-from fastapi import HTTPException, status
+from app.exceptions.http import NotFoundException, ForbiddenException
 from app.models.todo import Todo, Priority, TodoStatus
 from app.repositories.todo_repository import TodoRepository
 from app.schemas.todo import (
@@ -119,16 +119,10 @@ class TodoService:
         """Get a todo by ID or raise 404."""
         todo = await self.todo_repository.get_by_id(todo_id)
         if not todo:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Todo not found",
-            )
+            raise NotFoundException("Todo not found")
         return todo
 
     @staticmethod
     def _check_owner(todo: Todo, current_user_id: uuid.UUID) -> None:
         if todo.user_id != current_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to access this todo",
-            )
+            raise ForbiddenException("Not authorized to access this todo")

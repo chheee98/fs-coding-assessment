@@ -17,30 +17,52 @@ This assessment evaluates your ability to build a **production-grade RESTful API
 ### Prerequisites
 
 - Python 3.12+
-- PostgreSQL
-- This project uses `uv` for dependency management
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
+- PostgreSQL running locally (or via Docker)
 
 ### Setup
 
 1. Clone this repository
-2. Create a `.env` file (see `.env.example`)
-3. Install dependencies:
 
+2. Install dependencies:
    ```bash
+   cd backend
    uv sync
    ```
-4. Run the development server:
 
+3. Create two PostgreSQL databases:
+   ```sql
+   CREATE DATABASE todo_db;
+   CREATE DATABASE todo_db_test;
+   ```
+
+4. Configure environment:
+   ```bash
+   cp .env.example .env
+   cp .env.test.example .env.test
+   ```
+   Edit both files with your database credentials.
+
+5. Run database migrations:
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+6. Run the development server:
    ```bash
    uv run uvicorn app.main:app --reload
    ```
-5. Run all tests:
 
+7. Run tests:
    ```bash
-   uv run pytest
+   uv run pytest                                                    # all tests
+   uv run pytest tests/test_todos.py -v                             # todo tests only
+   uv run pytest tests/test_todos.py::TestRequiredByAssessment -v   # assessment-required only
    ```
 
-The API will be available at `http://localhost:8000`
+> Tests use a separate database (`TEST_DATABASE_URL` in `.env.test`), completely independent from the main app.
+
+The API will be available at `http://localhost:8000` — interactive docs at `http://localhost:8000/docs`
 
 ## Required Tasks
 

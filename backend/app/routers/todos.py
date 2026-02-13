@@ -9,12 +9,13 @@ from app.schemas.todo import TodoCreate, TodoPaginatedResponse, TodoRead, TodoUp
 router = APIRouter(prefix="/todos", tags=["todos"])
 
 
-@router.post("")
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_todo(
     todo_in: TodoCreate,
     todo_service: TodoServiceDep,
     current_service: CurrentUserDep,
 ):
+    """Create a new todo for the authenticated user."""
     return await todo_service.create_todo(todo_in, current_service.id)
 
 
@@ -32,6 +33,7 @@ async def get_todos(
         default=None, min_length=1, description="Search by title"
     ),
 ) -> TodoPaginatedResponse:
+    """Get all todos with pagination, filtering, and search. Hides description for non-owner todos."""
     return await todo_service.get_todos(
         current_user_id=current_user.id,
         page=page,
@@ -48,6 +50,7 @@ async def get_todo(
     todo_service: TodoServiceDep,
     current_user: CurrentUserDep,
 ) -> TodoRead:
+    """Get a single todo by ID. Only the owner can access full details."""
     return await todo_service.get_todo(todo_id, current_user.id)
 
 
@@ -58,6 +61,7 @@ async def update_todo(
     todo_service: TodoServiceDep,
     current_user: CurrentUserDep,
 ) -> TodoRead:
+    """Update a todo. Only the owner can update. Supports partial updates."""
     return await todo_service.update_todo(todo_id, todo_in, current_user.id)
 
 
@@ -67,6 +71,7 @@ async def delete_todo(
     todo_service: TodoServiceDep,
     current_user: CurrentUserDep,
 ) -> None:
+    """Delete a todo. Only the owner can delete."""
     await todo_service.delete_todo(todo_id, current_user.id)
 
 
@@ -76,6 +81,7 @@ async def complete_todo(
     todo_service: TodoServiceDep,
     current_user: CurrentUserDep,
 ) -> TodoRead:
+    """Toggle todo completion status. Only the owner can toggle."""
     return await todo_service.toggle_complete(todo_id, current_user.id)
 
 
@@ -84,4 +90,5 @@ async def get_stats(
     todo_service: TodoServiceDep,
     current_user: CurrentUserDep,
 ):
+    """Get todo statistics for the authenticated user."""
     return await todo_service.get_statistics(current_user.id)

@@ -1,20 +1,28 @@
 import uuid
 from datetime import datetime
 from sqlmodel import SQLModel, Field
+from pydantic import field_validator
 from app.models.todo import Priority, TodoStatus
 from app.schemas.pagination import PaginatedResponse
 
 
 class TodoCreate(SQLModel):
 
-    title: str = Field(max_length=200)
+    title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="")
     priority: Priority | None = None
     due_date: datetime | None = None
 
+    @field_validator("due_date")
+    @classmethod
+    def due_date_must_be_future(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v < datetime.now():
+            raise ValueError("due_date must be in the future")
+        return v
+
 
 class TodoUpdate(SQLModel):
-    title: str = Field(default=None, max_length=200)
+    title: str = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
     status: TodoStatus | None = None
     priority: Priority | None = None
@@ -24,6 +32,7 @@ class TodoUpdate(SQLModel):
 class TodoRead(SQLModel):
     id: uuid.UUID
     title: str
+    description: str | None
     status: TodoStatus
     priority: Priority | None
     due_date: datetime | None
