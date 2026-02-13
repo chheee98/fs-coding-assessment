@@ -59,7 +59,7 @@ class TodoPriorityStats(SQLModel):
     HIGH: int =0
 
 
-class TodoStats(SQLModel):
+class TodoStatsRead(SQLModel):
     total: int = 0
     completed: int = 0
     pending: int = 0

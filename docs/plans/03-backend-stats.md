@@ -140,13 +140,13 @@ Add to imports at top:
 
 ```python
 from app.schemas.todo import (
-    TodoCreate,
-    TodoPaginatedResponse,
-    TodoPriorityStats,
-    TodoRead,
-    TodoReadList,
-    TodoStats,
-    TodoUpdate,
+  TodoCreate,
+  TodoPaginatedResponse,
+  TodoPriorityStats,
+  TodoRead,
+  TodoReadList,
+  TodoStatsRead,
+  TodoUpdate,
 )
 ```
 
@@ -170,11 +170,11 @@ Replace the existing `get_stats` function. Add `TodoStats` to the import:
 
 ```python
 from app.schemas.todo import (
-    TodoCreate,
-    TodoPaginatedResponse,
-    TodoRead,
-    TodoStats,
-    TodoUpdate,
+  TodoCreate,
+  TodoPaginatedResponse,
+  TodoRead,
+  TodoStatsRead,
+  TodoUpdate,
 )
 ```
 

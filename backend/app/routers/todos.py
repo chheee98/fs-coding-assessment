@@ -44,6 +44,15 @@ async def get_todos(
     )
 
 
+@router.get("/stats")
+async def get_stats(
+    todo_service: TodoServiceDep,
+    current_user: CurrentUserDep,
+):
+    """Get todo statistics for the authenticated user."""
+    return await todo_service.get_statistics(current_user.id)
+
+
 @router.get("/{todo_id}", response_model=TodoRead)
 async def get_todo(
     todo_id: uuid.UUID,
@@ -83,12 +92,3 @@ async def complete_todo(
 ) -> TodoRead:
     """Toggle todo completion status. Only the owner can toggle."""
     return await todo_service.toggle_complete(todo_id, current_user.id)
-
-
-@router.get("/stats")
-async def get_stats(
-    todo_service: TodoServiceDep,
-    current_user: CurrentUserDep,
-):
-    """Get todo statistics for the authenticated user."""
-    return await todo_service.get_statistics(current_user.id)

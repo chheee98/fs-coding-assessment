@@ -9,6 +9,7 @@ from typing import AsyncGenerator
 
 import pytest
 from dotenv import load_dotenv
+from faker import Faker
 from httpx import ASGITransport, AsyncClient
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -44,13 +45,17 @@ def event_loop():
 
 
 @pytest.fixture(scope="session", autouse=True)
-async def setup_database():
-    """Verify test DB connection, create all tables, drop at the end."""
+async def verify_db():
+    """Verify test DB connection once at session start."""
     try:
         await verify_connection(target_engine=test_engine, db_url=TEST_DATABASE_URL)
     except ConnectionError as e:
         pytest.exit(str(e), returncode=1)
 
+
+@pytest.fixture(scope="class", autouse=True)
+async def setup_database():
+    """Create all tables before each test class, drop after. Clean slate per class."""
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
     yield
@@ -74,6 +79,12 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     ) as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def fake() -> Faker:
+    """Faker instance for generating test data."""
+    return Faker()
 
 
 @pytest.fixture

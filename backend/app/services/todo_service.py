@@ -9,7 +9,7 @@ from app.schemas.todo import (
     TodoRead,
     TodoPaginatedResponse,
     TodoReadList,
-    TodoUpdate, TodoStats,
+    TodoUpdate, TodoStatsRead,
 )
 
 
@@ -97,7 +97,7 @@ class TodoService:
         await self.todo_repository.update(todo)
         return TodoRead.model_validate(todo)
 
-    async def get_statistics(self, user_id: uuid.UUID) -> TodoStats:
+    async def get_statistics(self, user_id: uuid.UUID) -> TodoStatsRead:
         overall_statistics_row = await self.todo_repository.get_overall_statistics(
             user_id
         )
@@ -105,7 +105,7 @@ class TodoService:
             user_id
         )
 
-        return TodoStats(
+        return TodoStatsRead(
             total=overall_statistics_row.total,
             completed=overall_statistics_row.complete,
             pending=overall_statistics_row.pending,

@@ -44,7 +44,17 @@
 
 **Trade-off:** Generics add slight complexity. Pydantic v2 handles them well and auto-generates correct OpenAPI schemas. Used `BaseModel` instead of `SQLModel` because this is a pure response wrapper with no DB involvement.
 
-## 5. Bearer Token Auth (Not HttpOnly Cookies)
+## 5. Static Routes Before Path Parameters (Route Ordering)
+
+**Decision:** Define `GET /todos/stats` before `GET /todos/{todo_id}` in the router.
+
+**Discussion:** Stats tests were returning 422 (Unprocessable Entity) instead of 200. Investigation revealed FastAPI was matching `/stats` against the `/{todo_id}` route first, trying to parse `"stats"` as a UUID — which fails validation.
+
+**Why:** FastAPI matches routes in definition order. A path parameter like `/{todo_id}` is greedy — it captures any path segment, including literal strings like `stats`. Static segments must be registered first so they match before the parameter route is evaluated.
+
+**Trade-off:** Route definition order becomes load-bearing — reordering routes can silently break the API. This is a well-known FastAPI behavior documented in [Path Operation Order](https://fastapi.tiangolo.com/tutorial/path-params/#order-matters).
+
+## 6. Bearer Token Auth (Not HttpOnly Cookies)
 
 **Decision:** Keep the existing Bearer token + localStorage approach for JWT auth.
 
@@ -52,7 +62,7 @@
 
 **Trade-off:** localStorage is vulnerable to XSS — if an XSS attack succeeds, the token can be stolen. In production, HttpOnly cookies would be the better choice. For this assessment, the existing auth architecture was kept as-is.
 
-## 6. `session.execute()` for Aggregate Queries
+## 7. `session.execute()` for Aggregate Queries
 
 **Decision:** Use SQLAlchemy's `session.execute()` instead of SQLModel's `session.exec()` for raw aggregate queries (stats, counts).
 
@@ -60,7 +70,7 @@
 
 **Trade-off:** The IDE warns about using `execute()` instead of `exec()`. These warnings can be safely ignored for non-model queries.
 
-## 7. Two Separate Stats Queries (Overall + Priority)
+## 8. Two Separate Stats Queries (Overall + Priority)
 
 **Decision:** Split statistics into two repository methods — `get_overall_statistics()` and `get_statistics_by_priority()` — instead of one combined query.
 
@@ -70,7 +80,7 @@
 
 **Trade-off:** Two DB round-trips instead of one. For per-user stats on a todo app, the data volume is tiny and the simplicity is worth it.
 
-## 8. Description Hiding in Python, Not SQL
+## 9. Description Hiding in Python, Not SQL
 
 **Decision:** The `GET /todos` list endpoint hides descriptions of non-owner todos at the service layer (Python), not via SQL query.
 
@@ -78,7 +88,7 @@
 
 **Trade-off:** All descriptions are fetched from the DB even when nulled out. For a todo app's data volume, this is negligible.
 
-## 9. Naming Mismatches Between Layers Are Intentional
+## 10. Naming Mismatches Between Layers Are Intentional
 
 **Decision:** Allow different naming across layers (e.g., `toggle_complete` in service vs `complete_todo` in router).
 
@@ -86,7 +96,7 @@
 
 **Why:** Each layer names things for its own audience. The router describes the API action. The service describes business logic. The repo describes data operations. A repo's `create()` is generic — it doesn't need to know it's called from a "registration" flow.
 
-## 10. `nullable=False` on `user_id` Foreign Key
+## 11. `nullable=False` on `user_id` Foreign Key
 
 **Decision:** Set `user_id` as `nullable=False` (required) on the Todo model.
 
@@ -96,7 +106,7 @@
 
 **Trade-off:** For an existing production DB with NULL `user_id` rows, you'd need to backfill first, then enforce the constraint.
 
-## 11. `due_date` Validation Only on Create, Not Update
+## 12. `due_date` Validation Only on Create, Not Update
 
 **Decision:** `TodoCreate` validates that `due_date` must be in the future via `@field_validator`. `TodoUpdate` has no such validation.
 
@@ -104,7 +114,7 @@
 
 **Trade-off:** A user could explicitly update `due_date` to a past date. Accepted because the alternative (blocking all updates on overdue todos) is worse.
 
-## 12. Test DB Strategy — Separate `.env.test`, No Docker Dependency
+## 13. Test DB Strategy — Separate `.env.test`, No Docker Dependency
 
 **Decision:** Tests use an independent `TEST_DATABASE_URL` from `.env.test`, completely decoupled from the main app's `.env`. No Docker scripts or init scripts involved — just `uv run pytest`.
 
@@ -112,7 +122,7 @@
 
 **Trade-off:** Developer must manually create the test database and configure `.env.test`. A `.env.test.example` is provided as a template.
 
-## 13. `NullPool` for Test Engine
+## 14. `NullPool` for Test Engine
 
 **Decision:** Use `NullPool` on the test async engine instead of the default connection pool.
 
@@ -122,7 +132,7 @@
 
 **Trade-off:** No pooling means slightly slower connections — but that's the wrong concern here. Pytest tests verify **correctness** (right data? right status code?), not pool behavior. Pool-related issues (exhaustion, concurrency under load) belong to load testing with tools like `locust` or `k6` against a real running server. Different test layers, different tools — `NullPool` is the right call for this layer.
 
-## 14. Test Fixtures — `auth_user` Bundles Identity with Auth
+## 15. Test Fixtures — `auth_user` Bundles Identity with Auth
 
 **Decision:** The `auth_user` fixture registers a user and returns both auth headers and user info (`{"headers": {...}, "user": {...}}`).
 
@@ -130,15 +140,17 @@
 
 **Trade-off:** Headers are accessed via `auth_user["headers"]` instead of being a flat dict. Slightly more verbose, but tests gain full user context for free.
 
-## 15. Test Lifecycle — Session-Scoped Setup with Table Cleanup
+## 16. Test Lifecycle — Class-Scoped Table Setup
 
-**Decision:** `setup_database` fixture runs once per test session (`scope="session"`) — verifies DB connection, creates all tables before tests, drops all tables after.
+**Decision:** Split DB setup into two fixtures: `verify_db` (`scope="session"`) checks the connection once, `setup_database` (`scope="class"`) creates and drops all tables per test class.
 
-**Why:** Creating/dropping tables per-test is wasteful. Once per session is enough — tests share the same schema but each creates its own data via unique users (UUID-based).
+**Discussion:** With session scope, all test classes shared DB state. This caused issues — e.g., `test_get_empty_list` couldn't guarantee an empty list because earlier classes had already created todos. Filtering by `user_id` was a workaround, but class-scoped cleanup is cleaner.
 
-**Trade-off:** Tests share DB state across the session. Each test creates a unique user (via `uuid4` in fixtures), so data doesn't collide. `pytest.exit()` is used for DB connection failure — gives a clean error message instead of marking every test as ERROR.
+**Why:** Each test class starts with a clean database. No leftover data from other classes. Tests within the same class still share state (which is fine — they're testing the same endpoint group).
 
-## 16. Test Structure — 3A Pattern, Organized by Endpoint
+**Trade-off:** Slightly slower — tables are created/dropped per class (~10 cycles) instead of once. For a small test suite this is negligible. `pytest.exit()` is still used in `verify_db` for clean error messages on connection failure.
+
+## 17. Test Structure — 3A Pattern, Organized by Endpoint
 
 **Decision:** Tests follow the Arrange-Act-Assert pattern, grouped into classes by endpoint (`TestCreateTodo`, `TestGetTodos`, `TestUpdateTodo`, etc.) with a separate `TestTodoLifecycle` for chained operations.
 
