@@ -16,7 +16,7 @@ class TodoCreate(SQLModel):
     @field_validator("due_date")
     @classmethod
     def due_date_must_be_future(cls, v: datetime | None) -> datetime | None:
-        if v is not None and v < datetime.now():
+        if v is not None and v.replace(tzinfo=None) < datetime.now():
             raise ValueError("due_date must be in the future")
         return v
 
@@ -63,7 +63,6 @@ class TodoStatsRead(SQLModel):
     total: int = 0
     completed: int = 0
     pending: int = 0
-    failed: int = 0
     by_priority: TodoPriorityStats = TodoPriorityStats()
 
 
