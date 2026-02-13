@@ -95,3 +95,51 @@
 **Why:** Every todo must belong to an authenticated user. Allowing orphan todos doesn't match the business requirements.
 
 **Trade-off:** For an existing production DB with NULL `user_id` rows, you'd need to backfill first, then enforce the constraint.
+
+## 11. `due_date` Validation Only on Create, Not Update
+
+**Decision:** `TodoCreate` validates that `due_date` must be in the future via `@field_validator`. `TodoUpdate` has no such validation.
+
+**Why:** When creating a todo, a past due date makes no sense. But when updating an old todo (e.g., changing just the title), the existing `due_date` may already be in the past — rejecting the update because of an unrelated field is a bad user experience.
+
+**Trade-off:** A user could explicitly update `due_date` to a past date. Accepted because the alternative (blocking all updates on overdue todos) is worse.
+
+## 12. Test DB Strategy — Separate `.env.test`, No Docker Dependency
+
+**Decision:** Tests use an independent `TEST_DATABASE_URL` from `.env.test`, completely decoupled from the main app's `.env`. No Docker scripts or init scripts involved — just `uv run pytest`.
+
+**Why:** Tests should run with a single command. Coupling test config to the main app risks accidentally running tests against the real database. A separate `.env.test` makes the boundary explicit.
+
+**Trade-off:** Developer must manually create the test database and configure `.env.test`. A `.env.test.example` is provided as a template.
+
+## 13. `NullPool` for Test Engine
+
+**Decision:** Use `NullPool` on the test async engine instead of the default connection pool.
+
+**Discussion:** Tests were failing with `InterfaceError: another operation is in progress` — asyncpg doesn't allow concurrent operations on the same connection. The default pool reuses connections, so overlapping async requests (e.g., register + login in a fixture) would grab the same connection.
+
+**Why:** `NullPool` creates a fresh connection per session and disposes it after use. No reuse = no concurrency conflicts.
+
+**Trade-off:** No pooling means slightly slower connections — but that's the wrong concern here. Pytest tests verify **correctness** (right data? right status code?), not pool behavior. Pool-related issues (exhaustion, concurrency under load) belong to load testing with tools like `locust` or `k6` against a real running server. Different test layers, different tools — `NullPool` is the right call for this layer.
+
+## 14. Test Fixtures — `auth_user` Bundles Identity with Auth
+
+**Decision:** The `auth_user` fixture registers a user and returns both auth headers and user info (`{"headers": {...}, "user": {...}}`).
+
+**Why:** Tests often need to verify ownership — e.g., asserting `response["user_id"]` matches the logged-in user. The register endpoint already returns `UserRead` (with `id`, `username`, `email`), so the fixture captures it alongside the token. One fixture call gives tests everything they need — no extra API requests to look up "who am I?"
+
+**Trade-off:** Headers are accessed via `auth_user["headers"]` instead of being a flat dict. Slightly more verbose, but tests gain full user context for free.
+
+## 15. Test Lifecycle — Session-Scoped Setup with Table Cleanup
+
+**Decision:** `setup_database` fixture runs once per test session (`scope="session"`) — verifies DB connection, creates all tables before tests, drops all tables after.
+
+**Why:** Creating/dropping tables per-test is wasteful. Once per session is enough — tests share the same schema but each creates its own data via unique users (UUID-based).
+
+**Trade-off:** Tests share DB state across the session. Each test creates a unique user (via `uuid4` in fixtures), so data doesn't collide. `pytest.exit()` is used for DB connection failure — gives a clean error message instead of marking every test as ERROR.
+
+## 16. Test Structure — 3A Pattern, Organized by Endpoint
+
+**Decision:** Tests follow the Arrange-Act-Assert pattern, grouped into classes by endpoint (`TestCreateTodo`, `TestGetTodos`, `TestUpdateTodo`, etc.) with a separate `TestTodoLifecycle` for chained operations.
+
+**Why:** Class grouping makes it easy to run a subset (`pytest ::TestCreateTodo`). The lifecycle test catches DB state bugs that isolated endpoint tests miss — e.g., create → update → toggle → verify stats → delete → verify gone.
