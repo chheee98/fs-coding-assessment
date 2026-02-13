@@ -84,5 +84,4 @@ async def get_stats(
     todo_service: TodoServiceDep,
     current_user: CurrentUserDep,
 ):
-    # TODO: Implement get stats endpoint
-    return "stats"
+    return await todo_service.get_statistics(current_user.id)

@@ -44,4 +44,18 @@ class TodoReadList(SQLModel):
     updated_at: datetime
 
 
+class TodoPriorityStats(SQLModel):
+    LOW: int = 0
+    MEDIUM: int =0
+    HIGH: int =0
+
+
+class TodoStats(SQLModel):
+    total: int = 0
+    completed: int = 0
+    pending: int = 0
+    failed: int = 0
+    by_priority: TodoPriorityStats = TodoPriorityStats()
+
+
 TodoPaginatedResponse = PaginatedResponse[TodoReadList]

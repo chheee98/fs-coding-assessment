@@ -4,7 +4,13 @@ import math
 from fastapi import HTTPException, status
 from app.models.todo import Todo, Priority, TodoStatus
 from app.repositories.todo_repository import TodoRepository
-from app.schemas.todo import TodoCreate, TodoRead, TodoPaginatedResponse, TodoReadList, TodoUpdate
+from app.schemas.todo import (
+    TodoCreate,
+    TodoRead,
+    TodoPaginatedResponse,
+    TodoReadList,
+    TodoUpdate, TodoStats,
+)
 
 
 class TodoService:
@@ -83,9 +89,31 @@ class TodoService:
         todo = await self._get_todo_or_404(todo_id)
         self._check_owner(todo, current_user_id)
 
-        todo.status = (TodoStatus.COMPLETED if todo.status!= TodoStatus.COMPLETED else TodoStatus.NOT_STARTED)
+        todo.status = (
+            TodoStatus.COMPLETED
+            if todo.status != TodoStatus.COMPLETED
+            else TodoStatus.NOT_STARTED
+        )
         await self.todo_repository.update(todo)
         return TodoRead.model_validate(todo)
+
+    async def get_statistics(self, user_id: uuid.UUID) -> TodoStats:
+        overall_statistics_row = await self.todo_repository.get_overall_statistics(
+            user_id
+        )
+        statistics_by_priority = await self.todo_repository.get_statistics_by_priority(
+            user_id
+        )
+
+        return TodoStats(
+            total=overall_statistics_row.total,
+            completed=overall_statistics_row.complete,
+            pending=overall_statistics_row.pending,
+            by_priority={
+                row.priority: row.count
+                for row in statistics_by_priority
+            },
+        )
 
     async def _get_todo_or_404(self, todo_id: uuid.UUID) -> Todo:
         """Get a todo by ID or raise 404."""

@@ -7,13 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.routers import auth, todos, users
 
-
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting up...")
+    # Verify database connection on startup
+    from app.db.session import verify_connection
+    await verify_connection()
+
     yield
     print("Shutting down...")
 

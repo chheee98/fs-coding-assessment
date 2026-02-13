@@ -1,5 +1,7 @@
 import uuid
-from sqlmodel import select
+from collections.abc import Sequence
+from sqlalchemy import Row
+from sqlmodel import select, func
 from app.models.todo import Todo, Priority, TodoStatus
 from app.repositories.base import BaseRepository
 
@@ -50,3 +52,23 @@ class TodoRepository(BaseRepository):
     async def delete(self, todo: Todo) -> None:
         await self.session.delete(todo)
         await self.session.commit()
+
+    async def get_overall_statistics(self, user_id: uuid.UUID) -> Row:
+        statistics_statement = select(
+            func.count().label("total"),
+            func.count().filter(Todo.status == TodoStatus.COMPLETED).label("complete"),
+            func.count().filter(Todo.status != TodoStatus.COMPLETED).label("pending"),
+        ).where(Todo.user_id == user_id)
+
+        return (await self.session.execute(statistics_statement)).one()
+
+    async def get_statistics_by_priority(self, user_id: uuid.UUID) -> Sequence[Row]:
+        priority_statement = select(
+            Todo.priority,
+            func.count().label("count"),
+        ).where(
+            Todo.user_id == user_id,
+            Todo.priority.is_not(None)
+        ).group_by(Todo.priority)
+
+        return (await self.session.execute(priority_statement)).all()
