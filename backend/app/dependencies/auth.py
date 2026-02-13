@@ -27,10 +27,9 @@ async def get_current_user(token: TokenDep, user_service: UserServiceDep) -> Use
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         token_data = TokenPayload(**payload)
-        print(token_data)
     except (InvalidTokenError, ValidationError):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
     user = await user_service.get_user(uuid.UUID(token_data.sub))
