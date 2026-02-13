@@ -51,3 +51,6 @@ exclude = ["alembic/versions/*.py"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+
+[tool.coverage.run]
+concurrency = ["greenlet"]
