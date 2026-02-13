@@ -131,8 +131,9 @@ class TestRouters:
 class TestLifespan:
     """Tests for lifespan events."""
 
+    @patch("app.db.session.verify_connection", return_value=None)
     @patch("builtins.print")
-    def test_lifespan_startup_message(self, mock_print: MagicMock):
+    def test_lifespan_startup_message(self, mock_print: MagicMock, _mock_verify: MagicMock):
         # Create a new client which triggers lifespan
         with TestClient(app):
             # Check if startup message was printed
@@ -140,8 +141,9 @@ class TestLifespan:
             startup_called = any("Starting up..." in str(call) for call in calls)
             assert startup_called
 
+    @patch("app.db.session.verify_connection", return_value=None)
     @patch("builtins.print")
-    def test_lifespan_shutdown_message(self, mock_print: MagicMock):
+    def test_lifespan_shutdown_message(self, mock_print: MagicMock, _mock_verify: MagicMock):
         # Create and close client which triggers lifespan
         with TestClient(app):
             pass  # Context manager exit triggers shutdown

@@ -15,6 +15,7 @@ async def lifespan(app: FastAPI):
     # Verify database connection on startup
     from app.db.session import verify_connection
     await verify_connection()
+    print("Starting up...")
 
     yield
     print("Shutting down...")
