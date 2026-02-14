@@ -38,11 +38,10 @@ async def verify_connection(target_engine=None, db_url: str = "") -> None:
             await session.execute(text("SELECT 1"))
     except Exception as e:
         raise ConnectionError(
-            f"\nCould not connect to database.\n"
-            f"URL: {db_url}\n\n"
+            f"\nCould not connect to database.\n\n"
             f"Check:\n"
             f"  1. PostgreSQL is running\n"
             f"  2. Database exists\n"
-            f"  3. Credentials in .env are correct\n\n"
+            f"  3. Credentials in .env (or .env.test) are correct\n\n"
             f"Error: {e}"
         ) from e
