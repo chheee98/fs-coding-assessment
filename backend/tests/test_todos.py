@@ -571,6 +571,81 @@ class TestUpdateTodo:
             "detail"
         )  # detail must exists (not None / not empty)
 
+    @pytest.mark.asyncio
+    async def test_update_null_title_rejected(
+        self, client: AsyncClient, auth_user: dict, fake: Faker
+    ):
+        # Arrange
+        create_response = await client.post(
+            "/api/v1/todos",
+            json={"title": fake.sentence(nb_words=3)},
+            headers=auth_user["headers"],
+        )
+        todo_id = create_response.json()["id"]
+
+        # Act — send explicit null for non-nullable field
+        response = await client.patch(
+            f"/api/v1/todos/{todo_id}",
+            json={"title": None},
+            headers=auth_user["headers"],
+        )
+
+        # Assert — 422, not 500
+        assert response.status_code == 422
+        errors = response.json()["detail"]
+        field_names = [err["loc"][-1] for err in errors]
+        assert "title" in field_names
+
+    @pytest.mark.asyncio
+    async def test_update_null_description_rejected(
+        self, client: AsyncClient, auth_user: dict, fake: Faker
+    ):
+        # Arrange
+        create_response = await client.post(
+            "/api/v1/todos",
+            json={"title": fake.sentence(nb_words=3), "description": "Keep me"},
+            headers=auth_user["headers"],
+        )
+        todo_id = create_response.json()["id"]
+
+        # Act — send explicit null for non-nullable field
+        response = await client.patch(
+            f"/api/v1/todos/{todo_id}",
+            json={"description": None},
+            headers=auth_user["headers"],
+        )
+
+        # Assert — 422, not 500
+        assert response.status_code == 422
+        errors = response.json()["detail"]
+        field_names = [err["loc"][-1] for err in errors]
+        assert "description" in field_names
+
+    @pytest.mark.asyncio
+    async def test_update_null_status_rejected(
+        self, client: AsyncClient, auth_user: dict, fake: Faker
+    ):
+        # Arrange
+        create_response = await client.post(
+            "/api/v1/todos",
+            json={"title": fake.sentence(nb_words=3)},
+            headers=auth_user["headers"],
+        )
+        todo_id = create_response.json()["id"]
+
+        # Act — send explicit null for non-nullable field
+        response = await client.patch(
+            f"/api/v1/todos/{todo_id}",
+            json={"status": None},
+            headers=auth_user["headers"],
+        )
+
+        # Assert — 422, not 500
+        assert response.status_code == 422
+        errors = response.json()["detail"]
+        field_names = [err["loc"][-1] for err in errors]
+        assert "status" in field_names
+
 
 class TestDeleteTodo:
 

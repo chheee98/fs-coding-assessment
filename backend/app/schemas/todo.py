@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlmodel import SQLModel, Field
-from pydantic import FutureDatetime
+from pydantic import FutureDatetime, field_validator
 from app.models.todo import Priority, TodoStatus
 from app.schemas.pagination import PaginatedResponse
 
@@ -15,11 +15,19 @@ class TodoCreate(SQLModel):
 
 
 class TodoUpdate(SQLModel):
-    title: str = Field(default=None, min_length=1, max_length=200)
+    title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
     status: TodoStatus | None = None
     priority: Priority | None = None
     due_date: datetime | None = None
+
+    @field_validator("title", "description", "status", mode="before")
+    @classmethod
+    def reject_null(cls, v):
+        """Reject explicit null for DB non-nullable fields. Omitting the field is fine (partial update)."""
+        if v is None:
+            raise ValueError("cannot be null")
+        return v
 
 
 class TodoRead(SQLModel):
