@@ -1,14 +1,15 @@
 import uuid
 
 from pydantic import EmailStr
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.user import User
 from app.schemas.user import UserCreate
 
 
 class UserRepository:
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
     async def get_user(self, user_id: uuid.UUID) -> User | None:

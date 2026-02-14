@@ -1,26 +1,25 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, FutureDatetime, field_validator
 from app.models.todo import Priority, TodoStatus
 from app.schemas.mixin import TimeStampReadMixin
 from app.schemas.pagination import PaginatedResponse
-from app.schemas.types import NaiveFutureDatetime, NaiveDatetime
 
 
 class TodoCreate(BaseModel):
 
     title: str = Field(min_length=1, max_length=200)
-    description: str = Field(default="")
+    description: str = Field(default="", max_length=1000)
     priority: Priority | None = None
-    due_date: NaiveFutureDatetime | None = None
+    due_date: FutureDatetime | None = None
 
 
 class TodoUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=1000)
     status: TodoStatus | None = None
     priority: Priority | None = None
-    due_date: NaiveDatetime | None = None
+    due_date: datetime | None = None
 
     @field_validator("title", "description", "status", mode="before")
     @classmethod
@@ -36,7 +35,7 @@ class TodoRead(TimeStampReadMixin):
 
     id: uuid.UUID
     title: str
-    description: str | None
+    description: str
     status: TodoStatus
     priority: Priority | None
     due_date: datetime | None

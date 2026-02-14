@@ -4,7 +4,13 @@ from fastapi import APIRouter, Query, status
 from app.dependencies.auth import CurrentUserDep
 from app.dependencies.todo import TodoServiceDep
 from app.models.todo import Priority
-from app.schemas.todo import TodoCreate, TodoPaginatedResponse, TodoRead, TodoStatsRead, TodoUpdate
+from app.schemas.todo import (
+    TodoCreate,
+    TodoPaginatedResponse,
+    TodoRead,
+    TodoStatsRead,
+    TodoUpdate,
+)
 
 router = APIRouter(prefix="/todos", tags=["todos"])
 
@@ -13,13 +19,13 @@ router = APIRouter(prefix="/todos", tags=["todos"])
 async def create_todo(
     todo_in: TodoCreate,
     todo_service: TodoServiceDep,
-    current_service: CurrentUserDep,
+    current_user: CurrentUserDep,
 ) -> TodoRead:
     """Create a new todo for the authenticated user."""
-    return await todo_service.create_todo(todo_in, current_service.id)
+    return await todo_service.create_todo(todo_in, current_user.id)
 
 
-@router.get("")
+@router.get("", response_model=TodoPaginatedResponse)
 async def get_todos(
     todo_service: TodoServiceDep,
     current_user: CurrentUserDep,

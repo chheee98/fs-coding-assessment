@@ -1,4 +1,4 @@
-# Architecture Decisions & Trade-offs
+# Decisions & Trade-offs
 
 > **Transparency note:** This project was implemented with the assistance of [Claude Code](https://claude.com/claude-code), Anthropic's local AI coding agent. Each decision below was discussed with the AI, where it presented options, trade-offs, and community patterns. The developer (me) made the final call on every decision after understanding the reasoning. This document recaps those decisions from our conversation history.
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import DateTime, Field, SQLModel, Relationship
 from typing import TYPE_CHECKING
 
 from app.models.mixin import TimeStampMixin
@@ -27,7 +27,7 @@ class TodoBase(SQLModel):
     description: str = Field(nullable=False)
     status: TodoStatus = Field(default=TodoStatus.NOT_STARTED, nullable=False)
     priority: Priority | None = Field(default=None, nullable=True)
-    due_date: datetime | None = Field(default=None, nullable=True)
+    due_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), nullable=True)
 
 
 class Todo(TodoBase, TimeStampMixin, table=True):

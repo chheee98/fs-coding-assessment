@@ -47,10 +47,48 @@ Source: https://github.com/topschool-ai/fs-coding-assessment
 - **Frontend**: Next.js (App Router) + TypeScript + Tailwind CSS + Context API
 
 ### Backend Tasks (each has a plan file in `docs/plans/`)
-1. `docs/plans/2026-02-12-backend-task1-db-relationship.md` — Foreign key Todo ↔ User
-2. `docs/plans/2026-02-12-backend-task2-todo-crud.md` — 6 CRUD endpoints + schemas + repository + service + dependency
-3. `docs/plans/2026-02-12-backend-task3-stats.md` — GET /api/v1/todos/stats
-4. `docs/plans/2026-02-12-backend-task4-tests.md` — test_create_todo_success, test_get_all_todos
+1. `docs/plans/01-backend-db-relationship.md` — Foreign key Todo ↔ User
+2. `docs/plans/02-backend-todo-crud.md` — 6 CRUD endpoints + schemas + repository + service + dependency
+3. `docs/plans/03-backend-stats.md` — GET /api/v1/todos/stats
+4. `docs/plans/04-backend-tests.md` — test_create_todo_success, test_get_all_todos
+
+### Assessment Requirements (from `backend/README.md`)
+
+These are the **spec-mandated behaviors**. Do NOT flag these as bugs during reviews:
+
+#### Endpoint Behaviors
+- **GET /api/v1/todos** — Returns ALL users' todos (not just the current user's). Hide `description` for todos not owned by the current user. Pagination, filtering by priority/completed, search by title.
+- **GET /api/v1/todos/{todo_id}** — Owner only. Return **403** if not owner, **404** if not found (distinct status codes are required).
+- **PATCH /api/v1/todos/{todo_id}** — Owner only, partial update. Return **403** if not owner.
+- **DELETE /api/v1/todos/{todo_id}** — Owner only. Return **204** on success, **403** if not owner.
+- **PATCH /api/v1/todos/{todo_id}/complete** — Owner only. Toggle completed status.
+- **GET /api/v1/todos/stats** — Only count todos belonging to the authenticated user. Return `{ total, completed, pending, by_priority: { LOW, MEDIUM, HIGH } }`.
+
+#### Required Tests (in `tests/test_todos.py`)
+- `test_create_todo_success` — authenticated user creates todo, assert 201 + correct fields
+- `test_get_all_todos` — two users, verify description hidden for non-owner, verify `user_id` present
+
+#### Code Quality Checklist
+- Type hints on all functions
+- Proper error handling with custom exceptions
+- Docstrings on all endpoints
+- RESTful conventions + proper HTTP status codes
+- Input validation with Pydantic
+- Foreign key constraint with migration + index on `user_id`
+- Test coverage >= 70% for todo endpoints
+
+### Design Decisions (from plans)
+
+These decisions were made during brainstorming/planning. Respect them:
+
+- **Toggle complete** resets to `NOT_STARTED` (not previous status). Any status → COMPLETED, COMPLETED → NOT_STARTED. This was explicitly decided.
+- **Description hiding** happens in Python (service layer), not SQL. Simpler, readable, testable. Acceptable at todo-app scale.
+- **Separate `TodoRead` vs `TodoReadList`** schemas — `TodoReadList` has `description: str | None` for the list endpoint, `TodoRead` has `description: str` for single-todo owner access. Makes API contract explicit.
+- **Two DB queries for stats** (totals + priority breakdown) instead of one complex query. Simpler to read and maintain.
+- **`BaseRepository._paginate()`** — generic pagination helper. Any future repository inherits it.
+- **`PaginatedResponse[T]`** — generic response wrapper. Future entities reuse it: `PaginatedResponse[UserRead]`, etc.
+- **Custom exceptions** (`NotFoundException`, `ForbiddenException`) instead of raw `HTTPException` — cleaner, DRY.
+- **Session-scoped test DB** — tables created once, dropped at end. Acceptable for 2 tests.
 
 ### Frontend Tasks
 1. Authentication system (login, register, JWT, protected routes)

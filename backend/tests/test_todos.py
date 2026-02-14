@@ -1,6 +1,7 @@
 """Tests for Todo CRUD endpoints."""
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from faker import Faker
@@ -104,13 +105,15 @@ class TestCreateTodo:
     async def test_create_with_all_fields(
         self, client: AsyncClient, auth_user: dict, fake: Faker
     ):
-        # Arrange
+        # Arrange — simulate a real frontend in GMT+7 sending local time
+        local_tz = timezone(timedelta(hours=7))
         todo_data = {
             "title": fake.sentence(nb_words=4),
             "description": fake.paragraph(),
             "priority": fake.random_element(["LOW", "MEDIUM", "HIGH"]),
-            "due_date": fake.future_datetime().isoformat(),
+            "due_date": fake.future_datetime(tzinfo=local_tz).isoformat(),
         }
+        sent_due_date = datetime.fromisoformat(todo_data["due_date"])
 
         # Act
         response = await client.post(
@@ -123,7 +126,9 @@ class TestCreateTodo:
         assert data["title"] == todo_data["title"]
         assert data["description"] == todo_data["description"]
         assert data["priority"] == todo_data["priority"]
-        assert data["due_date"] == todo_data["due_date"]
+        # Compare as datetime — same instant, different representation (+07:00 vs UTC)
+        response_due_date = datetime.fromisoformat(data["due_date"])
+        assert response_due_date == sent_due_date
         assert data["user_id"] == auth_user["user"]["id"]
         assert "id" in data
         assert "created_at" in data
