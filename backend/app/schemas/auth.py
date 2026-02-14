@@ -1,11 +1,11 @@
-from sqlmodel import SQLModel
+from pydantic import BaseModel
 
 
-class AuthToken(SQLModel):
+class AuthToken(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
 
 
-class TokenPayload(SQLModel):
+class TokenPayload(BaseModel):
     sub: str | None = None

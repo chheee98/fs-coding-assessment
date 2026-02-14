@@ -5,7 +5,7 @@ from pydantic import EmailStr
 from sqlmodel import Field, SQLModel, Relationship
 
 
-from app.schemas.mixin import TimeStampMixin
+from app.models.mixin import TimeStampMixin
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

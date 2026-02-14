@@ -44,7 +44,35 @@
 
 **Trade-off:** Generics add slight complexity. Pydantic v2 handles them well and auto-generates correct OpenAPI schemas. Used `BaseModel` instead of `SQLModel` because this is a pure response wrapper with no DB involvement.
 
-## 5. Static Routes Before Path Parameters (Route Ordering)
+## 5. Schema Base Class — `BaseModel` for DTOs, `SQLModel` for DB Only
+
+**Decision:** Todo schemas (`TodoCreate`, `TodoUpdate`, `TodoRead`, etc.) use Pydantic's `BaseModel` instead of `SQLModel`. `SQLModel` is reserved for DB table models only.
+
+**Why:** Schemas are pure data transfer objects — they never touch the database. Using `SQLModel` for them works (it inherits from `BaseModel`) but is semantically wrong and couples schemas to SQLAlchemy internals they don't need. `BaseModel` makes the intent clear: these are API contracts, not database models.
+
+**Details:**
+- Request schemas (`TodoCreate`, `TodoUpdate`) use `BaseModel` with Pydantic's `Field` for validation.
+- Response schemas (`TodoRead`, `TodoReadList`) use `BaseModel` with `ConfigDict(from_attributes=True)` so `model_validate(orm_object)` can read ORM attributes.
+- Response schemas inherit from `TimeStampReadMixin(BaseModel)` for `created_at`/`updated_at` — separate from the DB model's `TimeStampMixin(SQLModel)` which carries `sa_type` and column config.
+- Stats schemas (`TodoPriorityStats`, `TodoStatsRead`) use plain `BaseModel` — no ORM conversion needed.
+
+**Trade-off:** Existing user schemas (`UserRead`, `UserCreate`) still inherit from `UserBase(SQLModel)` because they share field definitions with the DB model. Refactoring those would be a larger change. The todo schemas are the ones I wrote, so I applied the correct pattern there.
+
+## 6. Move `TimeStampMixin` from `schemas/` to `models/`
+
+**Decision:** Move `TimeStampMixin(SQLModel)` from `app/schemas/mixin.py` to `app/models/mixin.py`. Keep `TimeStampReadMixin(BaseModel)` in `app/schemas/mixin.py`.
+
+**Why:** The starter code placed `TimeStampMixin` in `schemas/` — but it has `sa_type=DateTime(timezone=True)` and `sa_column_kwargs`, which are pure SQLAlchemy DB column config. DB models (`Todo`, `User`) were importing from the schema layer, which inverts the dependency direction. Models should never depend on schemas.
+
+**After:**
+- `app/models/mixin.py` → `TimeStampMixin(SQLModel)` + `utcnow_aware()` — used by DB models
+- `app/schemas/mixin.py` → `TimeStampReadMixin(BaseModel)` — used by response schemas
+
+**Dependency direction:** `schemas/ → models/` (correct). `models/` never imports from `schemas/`.
+
+**Trade-off:** `schemas/user.py` still imports `TimeStampMixin` from `models/` for `UserRead(UserBase, TimeStampMixin)` — this is the pre-existing pattern. The cross-layer dependency is at least in the right direction now (schema depends on model, not the reverse).
+
+## 7. Static Routes Before Path Parameters (Route Ordering)
 
 **Decision:** Define `GET /todos/stats` before `GET /todos/{todo_id}` in the router.
 
@@ -54,7 +82,7 @@
 
 **Trade-off:** Route definition order becomes load-bearing — reordering routes can silently break the API. This is a well-known FastAPI behavior documented in [Path Operation Order](https://fastapi.tiangolo.com/tutorial/path-params/#order-matters).
 
-## 6. Bearer Token Auth (Not HttpOnly Cookies)
+## 8. Bearer Token Auth (Not HttpOnly Cookies)
 
 **Decision:** Keep the existing Bearer token + localStorage approach for JWT auth.
 
@@ -62,7 +90,7 @@
 
 **Trade-off:** localStorage is vulnerable to XSS — if an XSS attack succeeds, the token can be stolen. In production, HttpOnly cookies would be the better choice. For this assessment, the existing auth architecture was kept as-is.
 
-## 7. `session.execute()` for Aggregate Queries
+## 9. `session.execute()` for Aggregate Queries
 
 **Decision:** Use SQLAlchemy's `session.execute()` instead of SQLModel's `session.exec()` for raw aggregate queries (stats, counts).
 
@@ -70,7 +98,7 @@
 
 **Trade-off:** The IDE warns about using `execute()` instead of `exec()`. These warnings can be safely ignored for non-model queries.
 
-## 8. Two Separate Stats Queries (Overall + Priority)
+## 10. Two Separate Stats Queries (Overall + Priority)
 
 **Decision:** Split statistics into two repository methods — `get_overall_statistics()` and `get_statistics_by_priority()` — instead of one combined query.
 
@@ -80,7 +108,7 @@
 
 **Trade-off:** Two DB round-trips instead of one. For per-user stats on a todo app, the data volume is tiny and the simplicity is worth it.
 
-## 9. Description Hiding in Python, Not SQL
+## 11. Description Hiding in Python, Not SQL
 
 **Decision:** The `GET /todos` list endpoint hides descriptions of non-owner todos at the service layer (Python), not via SQL query.
 
@@ -88,7 +116,7 @@
 
 **Trade-off:** All descriptions are fetched from the DB even when nulled out. For a todo app's data volume, this is negligible.
 
-## 10. Naming Mismatches Between Layers Are Intentional
+## 12. Naming Mismatches Between Layers Are Intentional
 
 **Decision:** Allow different naming across layers (e.g., `toggle_complete` in service vs `complete_todo` in router).
 
@@ -96,7 +124,7 @@
 
 **Why:** Each layer names things for its own audience. The router describes the API action. The service describes business logic. The repo describes data operations. A repo's `create()` is generic — it doesn't need to know it's called from a "registration" flow.
 
-## 11. `nullable=False` on `user_id` Foreign Key
+## 13. `nullable=False` on `user_id` Foreign Key
 
 **Decision:** Set `user_id` as `nullable=False` (required) on the Todo model.
 
@@ -106,7 +134,7 @@
 
 **Trade-off:** For an existing production DB with NULL `user_id` rows, you'd need to backfill first, then enforce the constraint.
 
-## 12. `due_date` Validation Only on Create, Not Update
+## 14. `due_date` Validation Only on Create, Not Update
 
 **Decision:** `TodoCreate` validates that `due_date` must be in the future via `@field_validator`. `TodoUpdate` has no such validation.
 
@@ -114,7 +142,7 @@
 
 **Trade-off:** A user could explicitly update `due_date` to a past date. Accepted because the alternative (blocking all updates on overdue todos) is worse.
 
-## 13. Test DB Strategy — Separate `.env.test`, No Docker Dependency
+## 15. Test DB Strategy — Separate `.env.test`, No Docker Dependency
 
 **Decision:** Tests use an independent `TEST_DATABASE_URL` from `.env.test`, completely decoupled from the main app's `.env`. No Docker scripts or init scripts involved — just `uv run pytest`.
 
@@ -122,7 +150,7 @@
 
 **Trade-off:** Developer must manually create the test database and configure `.env.test`. A `.env.test.example` is provided as a template.
 
-## 14. `NullPool` for Test Engine
+## 16. `NullPool` for Test Engine
 
 **Decision:** Use `NullPool` on the test async engine instead of the default connection pool.
 
@@ -132,7 +160,7 @@
 
 **Trade-off:** No pooling means slightly slower connections — but that's the wrong concern here. Pytest tests verify **correctness** (right data? right status code?), not pool behavior. Pool-related issues (exhaustion, concurrency under load) belong to load testing with tools like `locust` or `k6` against a real running server. Different test layers, different tools — `NullPool` is the right call for this layer.
 
-## 15. Test Fixtures — `auth_user` Bundles Identity with Auth
+## 17. Test Fixtures — `auth_user` Bundles Identity with Auth
 
 **Decision:** The `auth_user` fixture registers a user and returns both auth headers and user info (`{"headers": {...}, "user": {...}}`).
 
@@ -140,7 +168,7 @@
 
 **Trade-off:** Headers are accessed via `auth_user["headers"]` instead of being a flat dict. Slightly more verbose, but tests gain full user context for free.
 
-## 16. Test Lifecycle — Class-Scoped Table Setup
+## 18. Test Lifecycle — Class-Scoped Table Setup
 
 **Decision:** Split DB setup into two fixtures: `verify_db` (`scope="session"`) checks the connection once, `setup_database` (`scope="class"`) creates and drops all tables per test class.
 
@@ -150,7 +178,7 @@
 
 **Trade-off:** Slightly slower — tables are created/dropped per class (~10 cycles) instead of once. For a small test suite this is negligible. `pytest.exit()` is still used in `verify_db` for clean error messages on connection failure.
 
-## 17. Test Structure — 3A Pattern, Organized by Endpoint
+## 19. Test Structure — 3A Pattern, Organized by Endpoint
 
 **Decision:** Tests follow the Arrange-Act-Assert pattern, grouped into classes by endpoint (`TestCreateTodo`, `TestGetTodos`, `TestUpdateTodo`, etc.) with a separate `TestTodoLifecycle` for chained operations.
 

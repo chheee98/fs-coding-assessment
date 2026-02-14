@@ -25,7 +25,7 @@ class TodoRepository(BaseRepository):
         completed: bool | None = None,
         search: str | None = None,
     ) -> tuple[list[Todo], int]:
-        statement = select(Todo)
+        statement = select(Todo).order_by(Todo.created_at.desc(), Todo.id)
 
         if priority:
             statement = statement.where(Todo.priority == priority)

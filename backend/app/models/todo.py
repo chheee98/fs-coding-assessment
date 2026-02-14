@@ -4,7 +4,7 @@ from enum import Enum
 from sqlmodel import Field, SQLModel, Relationship
 from typing import TYPE_CHECKING
 
-from app.schemas.mixin import TimeStampMixin
+from app.models.mixin import TimeStampMixin
 
 if TYPE_CHECKING:
     from app.models.user import User

@@ -231,6 +231,22 @@ class TestCreateTodo:
         field_names = [err["loc"][-1] for err in errors]
         assert "due_date" in field_names
 
+    @pytest.mark.asyncio
+    async def test_create_with_timezone_aware_due_date(
+        self, client: AsyncClient, auth_user: dict
+    ):
+        # Arrange — due_date with Z (UTC timezone-aware)
+        todo_data = {"title": "Timezone test", "due_date": "2099-01-01T00:00:00Z"}
+
+        # Act
+        response = await client.post(
+            "/api/v1/todos", json=todo_data, headers=auth_user["headers"]
+        )
+
+        # Assert — should succeed, not 500
+        assert response.status_code == 201
+        assert response.json()["due_date"] is not None
+
 
 class TestGetTodos:
 
@@ -268,6 +284,36 @@ class TestGetTodos:
         assert len(data["items"]) <= 2
         assert data["page"] == 1
         assert data["page_size"] == 2
+
+    @pytest.mark.asyncio
+    async def test_pagination_order_is_deterministic(
+        self, client: AsyncClient, auth_user: dict, fake: Faker
+    ):
+        # Arrange — create 3 todos sequentially
+        created_ids = []
+        for _ in range(3):
+            resp = await client.post(
+                "/api/v1/todos",
+                json={"title": fake.sentence(nb_words=3)},
+                headers=auth_user["headers"],
+            )
+            created_ids.append(resp.json()["id"])
+
+        # Act — fetch twice, same page
+        response1 = await client.get(
+            "/api/v1/todos?page=1&page_size=10", headers=auth_user["headers"]
+        )
+        response2 = await client.get(
+            "/api/v1/todos?page=1&page_size=10", headers=auth_user["headers"]
+        )
+
+        # Assert — same order both times, newest first
+        ids1 = [item["id"] for item in response1.json()["items"]]
+        ids2 = [item["id"] for item in response2.json()["items"]]
+        assert ids1 == ids2
+
+        # Verify newest todo is first (last created = first in list)
+        assert ids1[0] == created_ids[-1]
 
     @pytest.mark.asyncio
     async def test_filter_by_priority(
@@ -570,6 +616,29 @@ class TestUpdateTodo:
         assert (response.json()).get(
             "detail"
         )  # detail must exists (not None / not empty)
+
+    @pytest.mark.asyncio
+    async def test_update_with_timezone_aware_due_date(
+        self, client: AsyncClient, auth_user: dict, fake: Faker
+    ):
+        # Arrange
+        create_response = await client.post(
+            "/api/v1/todos",
+            json={"title": fake.sentence(nb_words=3)},
+            headers=auth_user["headers"],
+        )
+        todo_id = create_response.json()["id"]
+
+        # Act — update due_date with Z (UTC timezone-aware)
+        response = await client.patch(
+            f"/api/v1/todos/{todo_id}",
+            json={"due_date": "2099-01-01T00:00:00Z"},
+            headers=auth_user["headers"],
+        )
+
+        # Assert — should succeed, not 500
+        assert response.status_code == 200
+        assert response.json()["due_date"] is not None
 
     @pytest.mark.asyncio
     async def test_update_null_title_rejected(
