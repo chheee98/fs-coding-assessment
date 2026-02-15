@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/lib/api/auth';
 import { clearAuthStorage } from '@/lib/api/client';
 import type { LoginFormData, RegisterFormData } from '@/lib/schemas/auth';
@@ -30,6 +31,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,9 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     clearAuthStorage();
+    queryClient.clear();
     setUser(null);
     router.push('/login');
-  }, [router]);
+  }, [queryClient, router]);
 
   const value = useMemo(
     () => ({
