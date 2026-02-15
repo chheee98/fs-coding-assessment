@@ -367,7 +367,6 @@ const updateMutation = useMutation({
       }
     );
 
-    onOpenChange(false);
     return { previousData };
   },
   onError: (_err, _vars, context) => {
@@ -381,6 +380,7 @@ const updateMutation = useMutation({
   onSettled: () => {
     queryClient.invalidateQueries({ queryKey: ["todos"] });
     queryClient.invalidateQueries({ queryKey: ["todoStats"] });
+    onOpenChange(false); // Close modal after API responds so user sees "Saving..." pending state
   },
 });
 ```

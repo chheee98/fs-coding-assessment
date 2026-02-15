@@ -101,16 +101,7 @@ Wrap header actions in `<nav>` for semantic meaning.
 
 Wrap each card in `<article>` for semantic meaning.
 
-```tsx
-// Change outer <Card> to:
-<Card asChild className={isPending ? "opacity-60 transition-opacity" : ""}>
-  <article aria-label={`Todo: ${todo.title}`}>
-    {/* ... existing content ... */}
-  </article>
-</Card>
-```
-
-**Note:** If shadcn Card doesn't support `asChild`, wrap the Card content in an `<article>` inside:
+shadcn Card does NOT support `asChild`. Wrap Card content in `<article>` inside:
 
 ```tsx
 <Card className={isPending ? "opacity-60 transition-opacity" : ""}>
@@ -123,6 +114,27 @@ Wrap each card in `<article>` for semantic meaning.
     </CardContent>
   </article>
 </Card>
+```
+
+Also add `aria-label` to Edit and Delete buttons (toggle already has one):
+
+```tsx
+<Button
+  variant="outline"
+  size="sm"
+  onClick={() => onEdit(todo)}
+  aria-label={`Edit: ${todo.title}`}
+>
+  Edit
+</Button>
+<Button
+  variant="destructive"
+  size="sm"
+  onClick={() => onDelete(todo)}
+  aria-label={`Delete: ${todo.title}`}
+>
+  Delete
+</Button>
 ```
 
 ### Step 4: Update `src/components/todos/todo-list.tsx`

@@ -93,12 +93,11 @@ All todo API calls. Used by React Query hooks.
 import { api } from "./client";
 import type {
   Todo,
-  TodoCreate,
-  TodoUpdate,
   TodoListItem,
   TodoStats,
   PaginatedResponse,
 } from "@/types/todo";
+import type { TodoCreateFormData, TodoUpdateFormData } from "@/lib/schemas/todo";
 
 export interface TodoListParams {
   page?: number;
@@ -123,12 +122,12 @@ export const todosApi = {
     return data;
   },
 
-  create: async (todo: TodoCreate): Promise<Todo> => {
+  create: async (todo: TodoCreateFormData): Promise<Todo> => {
     const { data } = await api.post<Todo>("/todos", todo);
     return data;
   },
 
-  update: async (id: string, todo: TodoUpdate): Promise<Todo> => {
+  update: async (id: string, todo: TodoUpdateFormData): Promise<Todo> => {
     const { data } = await api.patch<Todo>(`/todos/${id}`, todo);
     return data;
   },
@@ -250,7 +249,7 @@ Search bar + priority filter + "New Todo" button. Updates URL query params.
 ```tsx
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
@@ -271,8 +270,32 @@ export function TodoFilters({ onCreateClick }: TodoFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const search = searchParams.get("search") ?? "";
   const priority = searchParams.get("priority") ?? "";
+
+  // Local state for search input — debounce before pushing to URL
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    // Skip the first render to avoid pushing on mount
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (searchInput) {
+        params.set("search", searchInput);
+      } else {
+        params.delete("search");
+      }
+      params.delete("page");
+      router.push(`?${params.toString()}`);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateParams = useCallback(
     (key: string, value: string) => {
@@ -293,8 +316,8 @@ export function TodoFilters({ onCreateClick }: TodoFiltersProps) {
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
       <Input
         placeholder="Search todos by title..."
-        defaultValue={search}
-        onChange={(e) => updateParams("search", e.target.value)}
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
         className="sm:max-w-xs"
         aria-label="Search todos by title"
       />
@@ -324,7 +347,7 @@ export function TodoFilters({ onCreateClick }: TodoFiltersProps) {
 }
 ```
 
-**Design note:** Filters are stored in URL search params, not React state. This makes URLs shareable and filter state survives page refresh. React Query's `queryKey` includes these params, so changing them triggers a refetch automatically.
+**Design note:** Filters are stored in URL search params, not React state. This makes URLs shareable and filter state survives page refresh. React Query's `queryKey` includes these params, so changing them triggers a refetch automatically. Search uses local state with a 300ms debounce before pushing to URL — this prevents firing an API call per keystroke.
 
 ### Step 6: Create `src/components/todos/todo-card.tsx`
 
@@ -427,6 +450,7 @@ export function TodoCard({ todo, onEdit, onDelete }: TodoCardProps) {
               variant="outline"
               size="sm"
               onClick={() => onEdit(todo)}
+              aria-label={`Edit: ${todo.title}`}
             >
               Edit
             </Button>
@@ -434,6 +458,7 @@ export function TodoCard({ todo, onEdit, onDelete }: TodoCardProps) {
               variant="destructive"
               size="sm"
               onClick={() => onDelete(todo)}
+              aria-label={`Delete: ${todo.title}`}
             >
               Delete
             </Button>
@@ -599,6 +624,7 @@ import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -659,6 +685,7 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
       queryClient.invalidateQueries({ queryKey: ["todos"] });
       queryClient.invalidateQueries({ queryKey: ["todoStats"] });
       toast.success("Todo created successfully");
+      form.reset({ title: "", description: "", priority: undefined });
       onOpenChange(false);
     },
     onError: (error: AxiosError<{ detail?: string }>) => {
@@ -694,12 +721,16 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const isDirty = form.formState.isDirty;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Todo" : "Create Todo"}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Update the details of your todo." : "Fill in the details to create a new todo."}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -771,7 +802,7 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || (isEditing && !isDirty)}>
                 {isPending
                   ? isEditing
                     ? "Saving..."
