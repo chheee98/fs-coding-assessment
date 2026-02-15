@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { todosApi } from "@/lib/api/todos";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from '@tanstack/react-query';
+import { todosApi } from '@/lib/api/todos';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function StatsCards() {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["todoStats"],
+    queryKey: ['todoStats'],
     queryFn: todosApi.getStats,
   });
 
@@ -22,9 +22,9 @@ export function StatsCards() {
   }
 
   const cards = [
-    { title: "Total", value: stats?.total ?? 0 },
-    { title: "Completed", value: stats?.completed ?? 0 },
-    { title: "Pending", value: stats?.pending ?? 0 },
+    { title: 'Total', value: stats?.total ?? 0 },
+    { title: 'Completed', value: stats?.completed ?? 0 },
+    { title: 'Pending', value: stats?.pending ?? 0 },
   ];
 
   return (
@@ -38,7 +38,10 @@ export function StatsCards() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold" aria-label={`${card.title}: ${card.value}`}>
+              <p
+                className="text-2xl font-bold"
+                aria-label={`${card.title}: ${card.value}`}
+              >
                 {card.value}
               </p>
             </CardContent>

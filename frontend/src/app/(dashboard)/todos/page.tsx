@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { todosApi } from "@/lib/api/todos";
-import { useDebounce } from "@/hooks/use-debounce";
-import type { TodoListItem } from "@/types/todo";
-import { StatsCards } from "@/components/todos/stats-cards";
-import { TodoFilters } from "@/components/todos/todo-filters";
-import { TodoList } from "@/components/todos/todo-list";
-import { Pagination } from "@/components/todos/pagination";
-import { TodoModal } from "@/components/todos/todo-modal";
-import { DeleteConfirmDialog } from "@/components/todos/delete-confirm-dialog";
+import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { todosApi } from '@/lib/api/todos';
+import { useDebounce } from '@/hooks/use-debounce';
+import type { TodoListItem } from '@/types/todo';
+import { StatsCards } from '@/components/todos/stats-cards';
+import { TodoFilters } from '@/components/todos/todo-filters';
+import { TodoList } from '@/components/todos/todo-list';
+import { Pagination } from '@/components/todos/pagination';
+import { TodoModal } from '@/components/todos/todo-modal';
+import { DeleteConfirmDialog } from '@/components/todos/delete-confirm-dialog';
 
 export default function TodosPage() {
   const searchParams = useSearchParams();
 
   // Read filter state from URL
-  const page = Number(searchParams.get("page") ?? "1");
-  const priority = searchParams.get("priority") ?? undefined;
-  const search = searchParams.get("search") ?? "";
+  const page = Number(searchParams.get('page') ?? '1');
+  const priority = searchParams.get('priority') ?? undefined;
+  const search = searchParams.get('search') ?? '';
 
   // Debounce search with 300ms delay, min 2 chars
   const debouncedSearch = useDebounce(search, 300);
@@ -28,7 +28,7 @@ export default function TodosPage() {
 
   // Fetch todos
   const { data, isLoading } = useQuery({
-    queryKey: ["todos", { page, priority, search: effectiveSearch }],
+    queryKey: ['todos', { page, priority, search: effectiveSearch }],
     queryFn: () =>
       todosApi.getAll({
         page,
@@ -71,9 +71,7 @@ export default function TodosPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
-      {data && (
-        <Pagination page={data.page} totalPages={data.total_pages} />
-      )}
+      {data && <Pagination page={data.page} totalPages={data.total_pages} />}
       <TodoModal
         open={modalOpen}
         onOpenChange={setModalOpen}

@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useCallback, useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Input } from "@/components/ui/input";
+import { useCallback, useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Priority } from "@/types/todo";
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Priority } from '@/types/todo';
 
 interface TodoFiltersProps {
   onCreateClick: () => void;
@@ -21,10 +21,12 @@ export function TodoFilters({ onCreateClick }: TodoFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const priority = searchParams.get("priority") ?? "";
+  const priority = searchParams.get('priority') ?? '';
 
   // Local state for search input — debounce before pushing to URL
-  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
+  const [searchInput, setSearchInput] = useState(
+    searchParams.get('search') ?? ''
+  );
   const isFirstRender = useRef(true);
 
   useEffect(() => {
@@ -37,11 +39,11 @@ export function TodoFilters({ onCreateClick }: TodoFiltersProps) {
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
       if (searchInput) {
-        params.set("search", searchInput);
+        params.set('search', searchInput);
       } else {
-        params.delete("search");
+        params.delete('search');
       }
-      params.delete("page");
+      params.delete('page');
       router.push(`?${params.toString()}`);
     }, 300);
 
@@ -57,7 +59,7 @@ export function TodoFilters({ onCreateClick }: TodoFiltersProps) {
         params.delete(key);
       }
       // Reset to page 1 when filters change
-      params.delete("page");
+      params.delete('page');
       router.push(`?${params.toString()}`);
     },
     [router, searchParams]
@@ -75,10 +77,13 @@ export function TodoFilters({ onCreateClick }: TodoFiltersProps) {
       <Select
         value={priority}
         onValueChange={(value) =>
-          updateParams("priority", value === "ALL" ? "" : value)
+          updateParams('priority', value === 'ALL' ? '' : value)
         }
       >
-        <SelectTrigger className="w-full sm:w-40" aria-label="Filter by priority">
+        <SelectTrigger
+          className="w-full sm:w-40"
+          aria-label="Filter by priority"
+        >
           <SelectValue placeholder="All Priorities" />
         </SelectTrigger>
         <SelectContent>

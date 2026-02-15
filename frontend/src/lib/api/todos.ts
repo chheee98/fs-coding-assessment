@@ -1,11 +1,14 @@
-import { api } from "./client";
+import { api } from './client';
 import type {
   Todo,
   TodoListItem,
   TodoStats,
   PaginatedResponse,
-} from "@/types/todo";
-import type { TodoCreateFormData, TodoUpdateFormData } from "@/lib/schemas/todo";
+} from '@/types/todo';
+import type {
+  TodoCreateFormData,
+  TodoUpdateFormData,
+} from '@/lib/schemas/todo';
 
 export interface TodoListParams {
   page?: number;
@@ -19,7 +22,7 @@ export const todosApi = {
   getAll: async (
     params: TodoListParams = {}
   ): Promise<PaginatedResponse<TodoListItem>> => {
-    const { data } = await api.get<PaginatedResponse<TodoListItem>>("/todos", {
+    const { data } = await api.get<PaginatedResponse<TodoListItem>>('/todos', {
       params,
     });
     return data;
@@ -31,7 +34,7 @@ export const todosApi = {
   },
 
   create: async (todo: TodoCreateFormData): Promise<Todo> => {
-    const { data } = await api.post<Todo>("/todos", todo);
+    const { data } = await api.post<Todo>('/todos', todo);
     return data;
   },
 
@@ -50,7 +53,7 @@ export const todosApi = {
   },
 
   getStats: async (): Promise<TodoStats> => {
-    const { data } = await api.get<TodoStats>("/todos/stats");
+    const { data } = await api.get<TodoStats>('/todos/stats');
     return data;
   },
 };

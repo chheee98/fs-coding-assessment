@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 interface PaginationProps {
   page: number;
@@ -16,7 +16,7 @@ export function Pagination({ page, totalPages }: PaginationProps) {
   const goToPage = useCallback(
     (newPage: number) => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set("page", String(newPage));
+      params.set('page', String(newPage));
       router.push(`?${params.toString()}`);
     },
     [router, searchParams]
@@ -34,7 +34,10 @@ export function Pagination({ page, totalPages }: PaginationProps) {
   );
 
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-center gap-2">
+    <nav
+      aria-label="Pagination"
+      className="flex items-center justify-center gap-2"
+    >
       <Button
         variant="outline"
         size="sm"
@@ -49,10 +52,10 @@ export function Pagination({ page, totalPages }: PaginationProps) {
         {pages.map((p) => (
           <Button
             key={p}
-            variant={p === page ? "default" : "outline"}
+            variant={p === page ? 'default' : 'outline'}
             size="sm"
             onClick={() => goToPage(p)}
-            aria-current={p === page ? "page" : undefined}
+            aria-current={p === page ? 'page' : undefined}
           >
             {p}
           </Button>
