@@ -21,6 +21,7 @@ Then answer the rephrased question.
 
 - **Prefer scalable, clean, best-practice design patterns.** Reusable abstractions, generics, and proper separation of concerns are motivating — not over-engineering. When a pattern can be made generic for future reuse (e.g., pagination, error responses), do it.
 - Don't hold back on good architecture to "keep it simple." The developer finds clean design energizing, not pressuring.
+- **Every backend feature change must have test coverage.** When modifying or adding any backend feature, always include pytest test cases in the plan and implementation. No feature is done without tests.
 
 ## Vibecoding Approach
 
@@ -109,3 +110,43 @@ These decisions were made during brainstorming/planning. Respect them:
 2. Frontend after API is verified working
 3. Tests alongside each backend task
 4. Manual verification at each step via `/docs` and browser
+5. AI QA testing after manual verification passes (see below)
+
+## AI QA Test Approach
+
+After manual testing confirms all requirements are met, an AI agent runs comprehensive E2E tests via **Playwright MCP** against the running app.
+
+### How It Works
+1. **Developer manually tests** — verify all features work, explore edge cases
+2. **Test cases are written** — structured markdown files in `docs/qa/`, one file per feature area
+3. **AI agent executes** — reads each test case file, drives the browser via Playwright MCP, verifies both UI behavior and API responses (via network inspection)
+4. **Results stored** — in `test-results/` at project root (not committed to git)
+
+### Test Case Structure
+- Location: `docs/qa/<feature>.md`
+- Format: Markdown checklists with unique IDs (e.g., `TC-AUTH-01`)
+- Each test case includes: preconditions, step-by-step actions, expected UI results, expected API responses, severity level
+- Scope: E2E user interaction + API response verification via browser DevTools/network inspection
+
+### Test Case Files
+```
+docs/qa/
+├── 00-test-approach.md              # AI QA strategy (detailed version)
+├── auth-register.md                 # Registration tests
+├── auth-login.md                    # Login tests
+├── auth-session.md                  # JWT, protected routes, logout
+├── todo-create.md                   # Create todo tests
+├── todo-read.md                     # List + single view + description hiding
+├── todo-update.md                   # Update todo tests
+├── todo-delete.md                   # Delete todo tests
+├── todo-complete.md                 # Toggle completion tests
+├── todo-filters.md                  # Priority filter, search, pagination
+├── todo-stats.md                    # Stats display tests
+├── orchestration-lifecycle.md       # Full CRUD user journeys
+└── orchestration-multi-user.md      # Multi-user ownership/visibility flows
+```
+
+### Test Results
+- Location: `test-results/` at project root
+- Not committed to git (just don't `git add` — no gitignore needed)
+- AI agent decides internal format for results
