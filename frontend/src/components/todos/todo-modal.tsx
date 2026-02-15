@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { todosApi } from '@/lib/api/todos';
 import { todoCreateSchema, type TodoCreateFormData } from '@/lib/schemas/todo';
+import { getDirtyValues } from '@/lib/utils';
 import { PaginatedResponse, Priority, type TodoListItem } from '@/types/todo';
 import { toast } from 'sonner';
 import {
@@ -125,14 +126,14 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
   });
 
   const onSubmit = (data: TodoCreateFormData) => {
-    // Clean up empty optional fields
-    const payload: TodoCreateFormData = { title: data.title };
-    if (data.description) payload.description = data.description;
-    if (data.priority) payload.priority = data.priority;
-
     if (isEditing) {
-      updateMutation.mutate(payload);
+      // PATCH: only send fields that actually changed
+      updateMutation.mutate(getDirtyValues(form, data) as TodoCreateFormData);
     } else {
+      // POST: send all non-empty fields
+      const payload: TodoCreateFormData = { title: data.title };
+      if (data.description) payload.description = data.description;
+      if (data.priority) payload.priority = data.priority;
       createMutation.mutate(payload);
     }
   };
