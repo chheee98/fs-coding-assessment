@@ -66,9 +66,9 @@ src/
       client.ts                # axios instance + interceptors (auto-token, 401 redirect)
       auth.ts                  # login(), register() API calls
       todos.ts                 # CRUD + stats + toggle API calls
-    validations/
-      auth.ts                  # Zod: loginSchema, registerSchema
-      todo.ts                  # Zod: todoCreateSchema, todoUpdateSchema
+    schemas/
+      auth.ts                  # Zod: loginSchema, registerSchema + inferred types
+      todo.ts                  # Zod: todoCreateSchema, todoUpdateSchema + inferred types
 
   hooks/
     use-auth.ts                # useAuth() hook (wraps AuthContext)
@@ -79,8 +79,8 @@ src/
     query-provider.tsx         # TanStack QueryClientProvider
 
   types/
-    auth.ts                    # AuthToken, User types
-    todo.ts                    # Todo, TodoCreate, TodoUpdate, TodoStats, PaginatedResponse
+    auth.ts                    # AuthToken, User (API responses only)
+    todo.ts                    # Todo, TodoListItem, TodoStats, PaginatedResponse (API responses only)
 ```
 
 ## Section 1: Authentication Flow

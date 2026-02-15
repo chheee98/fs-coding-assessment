@@ -28,8 +28,8 @@ frontend/src/
   + lib/
       + api/
           + todos.ts                    # Todo API functions (CRUD + stats + toggle)
-      + validations/
-          + todo.ts                     # Zod schemas for create/edit forms
+      + schemas/
+          + todo.ts                     # Zod schemas + inferred types (single source of truth for form inputs)
   + hooks/
       + use-debounce.ts                 # Debounced value hook for search
   + components/
@@ -149,7 +149,9 @@ export const todosApi = {
 };
 ```
 
-### Step 2: Create `src/lib/validations/todo.ts`
+### Step 2: Create `src/lib/schemas/todo.ts`
+
+Zod schemas as single source of truth for form input types. No separate `TodoCreate`/`TodoUpdate` interfaces needed.
 
 ```typescript
 import { z } from "zod";
@@ -591,7 +593,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { todosApi } from "@/lib/api/todos";
-import { todoCreateSchema, type TodoCreateFormData } from "@/lib/validations/todo";
+import { todoCreateSchema, type TodoCreateFormData } from "@/lib/schemas/todo";
 import { Priority, type TodoListItem } from "@/types/todo";
 import { toast } from "sonner";
 import {

@@ -45,6 +45,17 @@ npm run dev
 
 Visit [http://localhost:3000](http://localhost:3000)
 
+### Code Formatting
+
+This project uses [Prettier](https://prettier.io/) for consistent code formatting with [prettier-plugin-tailwindcss](https://github.com/tailwindlabs/prettier-plugin-tailwindcss) for automatic Tailwind class sorting.
+
+```bash
+npm run format          # Format all files
+npm run format:check    # Check formatting without changes (CI)
+npm run lint            # Run ESLint (formatting rules disabled — Prettier handles them)
+npm run type-check      # Run TypeScript type checking
+```
+
 ---
 
 ## ✅ Required Tasks
@@ -145,6 +156,7 @@ Before submitting:
 - [ ] All features implemented and working
 - [ ] No TypeScript errors (`npm run type-check`)
 - [ ] No linting errors (`npm run lint`)
+- [ ] No formatting issues (`npm run format:check`)
 - [ ] Responsive on mobile, tablet, desktop
 - [ ] Accessible (keyboard navigation, screen reader)
 - [ ] README updated with setup instructions
