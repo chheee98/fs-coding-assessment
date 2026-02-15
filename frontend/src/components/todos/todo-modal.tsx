@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { XIcon } from 'lucide-react';
 
 interface TodoModalProps {
   open: boolean;
@@ -45,6 +46,7 @@ interface TodoModalProps {
 export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
   const queryClient = useQueryClient();
   const isEditing = !!editingTodo;
+  const [showDirtyWarning, setShowDirtyWarning] = useState(false);
 
   const form = useForm<TodoCreateFormData>({
     resolver: zodResolver(todoCreateSchema),
@@ -66,6 +68,7 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
     } else {
       form.reset({ title: '', description: '', priority: undefined });
     }
+    setShowDirtyWarning(false);
   }, [editingTodo, form]);
 
   const createMutation = useMutation({
@@ -141,9 +144,42 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
   const isPending = createMutation.isPending || updateMutation.isPending;
   const isDirty = form.formState.isDirty;
 
+  // Block close if form is dirty — first attempt shows warning, second attempt closes
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isDirty && !showDirtyWarning) {
+      setShowDirtyWarning(true);
+      return;
+    }
+    setShowDirtyWarning(false);
+    form.reset();
+    onOpenChange(nextOpen);
+  };
+
+  // Clear warning if user edits back to original values
+  useEffect(() => {
+    if (!isDirty) setShowDirtyWarning(false);
+  }, [isDirty]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-md"
+        showCloseButton={false}
+        onEscapeKeyDown={(e) => {
+          // Block default Radix close — route through handleOpenChange
+          e.preventDefault();
+          handleOpenChange(false);
+        }}
+      >
+        {/* Custom close button — goes through handleOpenChange to block if dirty */}
+        <button
+          type="button"
+          onClick={() => handleOpenChange(false)}
+          className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+        >
+          <XIcon />
+          <span className="sr-only">Close</span>
+        </button>
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Todo' : 'Create Todo'}</DialogTitle>
           <DialogDescription>
@@ -152,6 +188,11 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
               : 'Fill in the details to create a new todo.'}
           </DialogDescription>
         </DialogHeader>
+        {showDirtyWarning && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            You have unsaved changes. Cancel again to discard.
+          </p>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -215,7 +256,7 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 Cancel
               </Button>
