@@ -32,7 +32,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (respone) => respone,
   (error) => {
-    if (error.response?.status == 401 && typeof window !== 'undefined') {
+    if (
+      error.response?.status == 401 &&
+      typeof window !== 'undefined' &&
+      !window.location.pathname.includes('/login')
+    ) {
       clearAuthStorage();
       window.location.href = '/login';
     }
