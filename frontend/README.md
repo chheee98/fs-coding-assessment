@@ -26,6 +26,7 @@ This assessment evaluates your **frontend engineering skills**. You'll build a p
 ### Install dependencies
 
 ```bash
+cd frontend
 npm install
 ```
 
