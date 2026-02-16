@@ -17,11 +17,10 @@ class TodoCreate(BaseModel):
 class TodoUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=1000)
-    status: TodoStatus | None = None
     priority: Priority | None = None
     due_date: datetime | None = None
 
-    @field_validator("title", "description", "status", mode="before")
+    @field_validator("title", "description", mode="before")
     @classmethod
     def reject_null(cls, v):
         """Reject explicit null for DB non-nullable fields. Omitting the field is fine (partial update)."""
