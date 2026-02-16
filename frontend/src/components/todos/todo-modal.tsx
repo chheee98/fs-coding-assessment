@@ -50,6 +50,7 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
 
   const form = useForm<TodoCreateFormData>({
     resolver: zodResolver(todoCreateSchema),
+    mode: 'onTouched',
     defaultValues: {
       title: '',
       description: '',
