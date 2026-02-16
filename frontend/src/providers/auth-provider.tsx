@@ -35,28 +35,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount: restore auth state from localStorage
+  // On mount: validate token by calling /users/me
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    const username = localStorage.getItem('username');
-    if (token && username) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ id: payload.sub, username });
-      } catch {
-        clearAuthStorage();
-      }
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    authApi
+      .getMe()
+      .then((me) => {
+        setUser({ id: me.id, username: me.username });
+      })
+      .catch(() => {
+        clearAuthStorage();
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   const login = useCallback(
     async (credentials: LoginFormData) => {
       const data = await authApi.login(credentials);
       localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('username', credentials.username);
-      const payload = JSON.parse(atob(data.access_token.split('.')[1]));
-      setUser({ id: payload.sub, username: credentials.username });
+      const me = await authApi.getMe();
+      setUser({ id: me.id, username: me.username });
       router.push('/todos');
     },
     [router]

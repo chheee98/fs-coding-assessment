@@ -8,7 +8,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function clearAuthStorage() {
   localStorage.removeItem('access_token');
-  localStorage.removeItem('username');
 }
 
 export const api = axios.create({

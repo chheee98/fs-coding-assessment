@@ -12,4 +12,9 @@ export const authApi = {
     const { data } = await api.post<User>('/auth/register', credentials);
     return data;
   },
+
+  getMe: async (): Promise<User> => {
+    const { data } = await api.get<User>('/users/me');
+    return data;
+  },
 };

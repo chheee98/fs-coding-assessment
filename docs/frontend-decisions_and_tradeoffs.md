@@ -53,7 +53,19 @@ src/
 
 **Trade-off:** Vulnerable to XSS — if an XSS attack succeeds, the token can be stolen. Acceptable for a demo/assessment app. In production, httpOnly cookies would be the better choice.
 
-## 4. axios with Interceptors for Auto-Token
+## 4. Proactive Token Validation via `/users/me`
+
+**Decision:** On app initialization (browser refresh or entering the site URL), call `GET /users/me` to validate the stored token before rendering the app.
+
+**Previous behavior:** Decoded the JWT locally (`atob`) and stored `username` separately in localStorage. The app trusted this data and only discovered an expired/invalid token when an actual API call failed with 401.
+
+**Why:** Tokens can be revoked or expired between sessions. Calling `/users/me` when `AuthProvider` mounts catches this immediately — before the user sees a dashboard that breaks on the first interaction. User data (id, username) now comes from the server response, not from manually parsed JWT or extra localStorage keys.
+
+**When it runs:** Only when `AuthProvider` mounts — on browser refresh or entering the site URL. Client-side navigation between pages does not re-trigger it because the root layout stays mounted.
+
+**Trade-off:** One extra API call on mount. Negligible cost — `/users/me` is a lightweight query, and it runs during the loading spinner the user already sees.
+
+## 5. axios with Interceptors for Auto-Token
 
 **Decision:** Use axios with request/response interceptors instead of native `fetch`.
 
@@ -63,7 +75,7 @@ src/
 
 **Trade-off:** `window.location.href` is used for 401 redirect (hard navigation) instead of `router.push()`. The interceptor runs outside React's component tree, so hooks are unavailable. Hard redirect is acceptable for session expiry.
 
-## 5. TanStack React Query for Server State
+## 6. TanStack React Query for Server State
 
 **Decision:** Use React Query for all API data (todos, stats), Context API only for auth state.
 
@@ -73,7 +85,7 @@ src/
 
 **Trade-off:** Extra dependency. But the assessment requires optimistic updates and error handling — React Query makes that 10x less code than building it manually.
 
-## 6. Zod as Single Source of Truth (No Duplicate Types)
+## 7. Zod as Single Source of Truth (No Duplicate Types)
 
 **Decision:** Form input types are defined once in Zod schemas (`lib/schemas/`) and inferred via `z.infer`. No separate TypeScript interfaces for form inputs in `types/`.
 
@@ -89,13 +101,13 @@ src/
 
 **Trade-off:** Vendor lock-in to Zod. Mitigated by the Standard Schema initiative (Zod v4, Valibot, ArkType all support it). IDE hover shows `z.infer<typeof Schema>` instead of a named interface — functionally equivalent.
 
-## 7. `schemas/` Instead of `validations/`
+## 8. `schemas/` Instead of `validations/`
 
 **Decision:** Rename `lib/validations/` to `lib/schemas/` to match community convention.
 
 **Why:** The Zod community organizes files as "schemas" (the thing you define) rather than "validations" (what they do). This aligns with Zod's documentation, T3 stack, and most open-source Next.js projects.
 
-## 8. React Hook Form + Zod for Forms
+## 9. React Hook Form + Zod for Forms
 
 **Decision:** Use React Hook Form (RHF) for form state management, integrated with Zod for validation.
 
