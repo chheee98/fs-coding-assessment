@@ -30,30 +30,24 @@ This assessment evaluates your ability to build a **production-grade RESTful API
    uv sync
    ```
 
-3. Create two PostgreSQL databases:
-   ```sql
-   CREATE DATABASE todo_db;
-   CREATE DATABASE todo_db_test;
-   ```
-
-4. Configure environment:
+3. Configure environment:
    ```bash
    cp .env.example .env
    cp .env.test.example .env.test
    ```
-   Edit both files with your database credentials.
+   Edit `.env` and `.env.test` to match your local PostgreSQL connection (host, port, username, password).
 
-5. Run database migrations:
+4. Run database migrations:
    ```bash
    uv run alembic upgrade head
    ```
 
-6. Run the development server:
+5. Run the development server:
    ```bash
    uv run uvicorn app.main:app --reload
    ```
 
-7. Run tests:
+6. Run tests:
    ```bash
    uv run pytest                                                    # all tests
    uv run pytest tests/test_todos.py -v                             # todo tests only
