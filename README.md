@@ -2,6 +2,8 @@
 
 Welcome to the Full Stack Engineering Assessment! This challenge evaluates your ability to build a **production-ready TODO application** with modern architecture patterns, authentication, database integration, and comprehensive testing.
 
+This assessment was completed by pair programming with [Claude Code](https://claude.com/claude-code). See [`CLAUDE.md`](./CLAUDE.md) for more details on the approach and workflow.
+
 ---
 
 ## 🎯 Objective
@@ -19,6 +21,19 @@ Please check:
 
 - [`/backend/README.md`](./backend/README.md) for detailed Backend requirements
 - [`/frontend/README.md`](./frontend/README.md) for detailed Frontend requirements
+
+---
+
+## 📁 Documentation
+
+### Decisions & Trade-offs
+
+Architecture decisions made during development, with reasoning and trade-offs for each.
+
+- [`docs/backend-decisions_and_tradeoffs.md`](./docs/backend-decisions_and_tradeoffs.md) — 19 backend decisions (architecture, CRUD, stats, testing, reusable patterns)
+- [`docs/frontend-decisions_and_tradeoffs.md`](./docs/frontend-decisions_and_tradeoffs.md) — 9 frontend decisions (auth, todo management, optimistic updates, accessibility)
+- [`docs/beyond-spec-status-transitions-and-duedate.md`](./docs/beyond-spec-status-transitions-and-duedate.md) — Beyond-spec feature: proper status transitions and due date editing (separate PR)
+- [`docs/backend-ai-review.md`](./docs/backend-ai-review.md) — AI-assisted code review of the backend
 
 ---
 
