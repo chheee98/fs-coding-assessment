@@ -1,6 +1,6 @@
 # Beyond Spec: Status Transitions & Due Date Editing
 
-Things I noticed that felt wrong while building the assessed submission — and how I'd fix them.
+Things I noticed while building the assessed submission that could be improved — and how I'd approach them.
 
 ## What I Noticed
 
@@ -8,9 +8,9 @@ The backend defines `TodoStatus` with three states — `NOT_STARTED`, `IN_PROGRE
 
 Similarly, `due_date` exists in the backend model and both create/update schemas, but the frontend never exposes it. The field is invisible to users.
 
-## Why a Separate PR
+## Why This Is a Proposal, Not a Code Change
 
-I don't want to modify the assessed submission on `main`. The spec requires `/todos/{id}/complete` — it's there, it works. This feature branch removes it and replaces it with something better, but that's my opinion, not the requirement. Assessor sees `main` as complete, PR as initiative.
+The spec requires `/todos/{id}/complete` — it's there, it works, and the main branch is complete as assessed. This document captures my thinking on how I'd iterate on it next if given the green light.
 
 ## Decisions
 
@@ -33,7 +33,7 @@ Invalid transition returns `400 Bad Request`.
 
 ### Remove `/todos/{id}/complete` entirely
 
-No dead endpoints. The PATCH endpoint now handles all status changes with proper validation. Keeping both would be confusing — two ways to change status with different rules.
+No dead endpoints. The PATCH endpoint would handle all status changes with proper validation. Keeping both would be confusing — two ways to change status with different rules.
 
 ### Frontend buttons per status
 
@@ -63,4 +63,4 @@ Completed todos show the date in muted text, no warning. Due today shows amber. 
 
 ## Test Coverage
 
-new backend tests covering this new change.
+Would include backend tests covering status transition validation (allowed/rejected transitions, 400 on invalid).

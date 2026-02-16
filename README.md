@@ -32,7 +32,7 @@ Architecture decisions made during development, with reasoning and trade-offs fo
 
 - [`docs/backend-decisions_and_tradeoffs.md`](./docs/backend-decisions_and_tradeoffs.md) — 19 backend decisions (architecture, CRUD, stats, testing, reusable patterns)
 - [`docs/frontend-decisions_and_tradeoffs.md`](./docs/frontend-decisions_and_tradeoffs.md) — 9 frontend decisions (auth, todo management, optimistic updates, accessibility)
-- [`docs/beyond-spec-status-transitions-and-duedate.md`](./docs/beyond-spec-status-transitions-and-duedate.md) — Beyond-spec feature: proper status transitions and due date editing (separate PR)
+- [`docs/beyond-spec-status-transitions-and-duedate.md`](./docs/beyond-spec-status-transitions-and-duedate.md) — Beyond-spec proposal: proper status transitions and due date editing
 - [`docs/backend-ai-review.md`](./docs/backend-ai-review.md) — AI-assisted code review of the backend
 
 ---
