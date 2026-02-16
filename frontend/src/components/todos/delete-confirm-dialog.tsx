@@ -63,6 +63,9 @@ export function DeleteConfirmDialog({
       }
       toast.error('Failed to delete todo');
     },
+    onSuccess: () => {
+      toast.success('Todo deleted successfully');
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['todoStats'] });

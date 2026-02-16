@@ -75,6 +75,9 @@ export function TodoCard({ todo, onEdit, onDelete }: TodoCardProps) {
       }
       toast.error('Failed to update todo status');
     },
+    onSuccess: (data) => {
+      toast.success(data.status === 'COMPLETED' ? 'Todo completed' : 'Todo uncompleted');
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['todoStats'] });

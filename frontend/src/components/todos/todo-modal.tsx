@@ -122,6 +122,9 @@ export function TodoModal({ open, onOpenChange, editingTodo }: TodoModalProps) {
       }
       toast.error('Failed to update todo');
     },
+    onSuccess: () => {
+      toast.success('Todo updated successfully');
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['todos'] });
       queryClient.invalidateQueries({ queryKey: ['todoStats'] });
